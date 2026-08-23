@@ -22,7 +22,8 @@
       "@inspyr/ai": ["./packages/ai/src/index.ts"],
       "@inspyr/ingestion": ["./packages/ingestion/src/index.ts"],
       "@inspyr/ranking": ["./packages/ranking/src/index.ts"],
-      "@inspyr/pipeline": ["./packages/pipeline/src/index.ts"]
+      "@inspyr/pipeline": ["./packages/pipeline/src/index.ts"],
+      "@inspyr/channels": ["./packages/channels/src/index.ts"]
     }
   }
 }

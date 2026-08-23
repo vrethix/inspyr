@@ -5,3 +5,5 @@ export * from "./contracts";
 export * from "./scoring";
 export * from "./fatigue";
 export * from "./events";
+export * from "./channels";
+export * from "./drafts";

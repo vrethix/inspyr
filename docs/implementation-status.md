@@ -1,6 +1,7 @@
 # Implementation status
 
 **Milestone 1 — Source → Opportunity → Today.** Complete and verified end to end.
+**Milestone 2 step 1 — Create.** Complete and verified end to end.
 Last updated: 2026-08-23.
 
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
@@ -57,6 +58,61 @@ PASS — ranking moved by 12.02 because of the decisions.
 
 ---
 
+## Milestone 2 step 1 — Create (§5.4, §6.6, §6.7)
+
+One opportunity becomes genuinely different native artefacts per channel. Not a reformat:
+each channel decides its own action type, structure, hook and CTA from the source truth.
+
+| Requirement | Status |
+|---|---|
+| §5.4 Create never starts from a blank composer | ✅ starts from an opportunity |
+| §5.4 left source truth / centre editor / right review | ✅ `/create/[id]` |
+| §5.4 changing platform is not a reformat | ✅ separate draft, schema and editor per channel |
+| §5.4 every meaningful edit stored as a diff event | ✅ `draft_edits` with a computed change ratio |
+| §6.6 Platform Writer, independent native variants | ✅ one runtime, four ChannelPolicies |
+| §6.7 Quality Reviewer | ✅ verdicts from the model, numbers from code |
+| §15 every draft traceable to its source items | ✅ `source_item_ids_json` |
+| ARCHITECTURE_v0.2 §4 ActionSpec as the unit traded | ✅ `action_specs`, enumerated before anything is written |
+| ARCHITECTURE_v0.2 §6 per-channel reward weights | ✅ `channel_policies.reward_weights_json` |
+| ARCHITECTURE_v0.2 §6 `no_action` first-class | ✅ in every action space, with its own UI state |
+
+Verified by `scripts/verify-create.ts`:
+
+```
+action specs enumerated: 12 — none written yet
+
+x          thread           v1   constraints pass  repetition 0.177  sources 1
+linkedin   post             v1   constraints pass  repetition 0.216  sources 1
+instagram  carousel         v1   constraints pass  repetition 0.218  sources 1
+youtube    explainer_video  v1   constraints pass  repetition 0.153  sources 1
+
+distinct artefacts: 4/4
+edit recorded: v1 → v2, state edited
+
+PASS — every channel produced its own artefact, and the edit was measured.
+```
+
+### The reviewer emits no numbers
+
+§6.7 lists "voice match, factual grounding, novelty, clarity, hook quality, repetition risk,
+platform fit" — which reads like a list of scores. ARCHITECTURE_v0.2 §1.1 forbids a model
+writing a number. Both hold: the reviewer returns **categorical verdicts and specific
+findings** (`match` / `drift` / `off`, `native` / `translated` / `wrong_format`, per-claim
+`supported` / `unsupported` / `contradicted`), and every figure beside them is computed in
+code — constraint violations from the channel's own limits, repetition from lexical
+similarity against published content, grounding coverage from the reviewer's claim verdicts.
+
+This is strictly better than asking a model for `voice_match: 82`.
+
+### Drafts are written only for a chosen ActionSpec
+
+12 candidate actions are enumerated per opportunity; one is chosen per channel; only that
+one is written. This is what keeps §14 and §18 true, and it is the seam the Growth Simulator
+(ARCHITECTURE_v0.2 §5) drops into — it will score exactly these objects, and nothing else
+about the flow changes.
+
+---
+
 ## What was built
 
 ```
@@ -67,10 +123,11 @@ packages/db      Drizzle schema, tenant-scoping helpers, seed
 packages/ai      LLMProvider interface, Anthropic provider, deterministic fallback
 packages/ingestion  fetchers, normalization, dedupe, clustering
 packages/ranking    the §7 ranker and the §8 operator learner
+packages/channels   channel policies, the writer, the reviewer, ActionSpec generation
 packages/pipeline   the cycle that wires them together, with tracing
 ```
 
-**45 tests passing. Typecheck clean across all 8 projects. `next build` succeeds.**
+**70 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
 
 ---
 
@@ -159,23 +216,28 @@ npm run dev:worker            # optional; queue workers (needs Redis)
 # one full cycle without Redis
 npm run run-cycle --workspace=@inspyr/worker -- aitorch
 
-npm test                      # 45 tests
+npm test                      # 70 tests
 npm run typecheck
-npx tsx scripts/verify-loop.ts aitorch    # proves acceptance #12
+npx tsx scripts/verify-loop.ts aitorch     # proves acceptance #12
+npx tsx scripts/verify-create.ts aitorch   # proves per-channel drafting
 ```
 
 Seeded login: `you@inspyr.local` / `inspyr-dev-password`.
 
 ---
 
-## Next — Milestone 2
+## Next — Milestone 2, continued
 
-In the order the spec argues for:
-
-1. Draft creation from an opportunity, native per platform (§5.4).
+1. ~~Draft creation from an opportunity, native per platform (§5.4).~~ **Done.**
 2. Publication state machine + calendar (§5.5) — manual-export mode first.
 3. Metrics ingestion for whichever platform approves first.
 4. Embeddings + pgvector, replacing lexical similarity.
 5. ARCHITECTURE_v0.2 §5 Growth Simulator, shipping in the same PR as §10 calibration.
 
-Nothing in step 2 starts before step 1 produces something worth publishing.
+Step 2 is now unblocked: Create produces an approved draft, which is the thing a calendar
+would schedule.
+
+One caveat before building it. Everything above ran on the **heuristic** path — the drafts
+in the verification output are scaffolds, not writing. Whether Create actually works is a
+question about the model path, and answering it needs an `ANTHROPIC_API_KEY` and a session
+of real dogfooding, not another feature.

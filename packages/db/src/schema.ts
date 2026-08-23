@@ -249,3 +249,100 @@ export const priorContent = pgTable("prior_content", {
   uniqueIndex("prior_content_ws_hash_idx").on(t.workspaceId, t.contentHash),
   index("prior_content_ws_published_idx").on(t.workspaceId, t.publishedAt),
 ]);
+
+/**
+ * ARCHITECTURE_v0.2 §6 — one Channel Agent runtime, many policies.
+ *
+ * Seeded from DEFAULT_CHANNEL_POLICIES per workspace so the operator can tune
+ * craft and reward weights per identity without touching code.
+ */
+export const channelPolicies = pgTable("channel_policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  channel: text("channel").notNull(),
+  actionSpaceJson: jsonb("action_space_json").$type<string[]>().notNull().default([]),
+  constraintsJson: jsonb("constraints_json").$type<Record<string, number>>().notNull().default({}),
+  craft: text("craft").notNull().default(""),
+  /** The real differentiator between channels — per channel, not per workspace. */
+  rewardWeightsJson: jsonb("reward_weights_json").$type<Record<string, number>>().notNull().default({}),
+  /** suggest | approve | auto. Schema-supported from day one; UI exposes approve. */
+  autonomyJson: jsonb("autonomy_json").$type<Record<string, unknown>>().notNull().default({ level: "approve" }),
+  version: integer("version").notNull().default(1),
+  active: boolean("active").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("channel_policies_ws_channel_idx").on(t.workspaceId, t.channel)]);
+
+/**
+ * ARCHITECTURE_v0.2 §4 — the unit the whole system trades in.
+ *
+ * A decision, fully described, with no content written yet. The simulator will
+ * score these (§5); today they are generated deterministically from the
+ * opportunity and the channel policy. Drafts are only written for a spec that
+ * has been chosen, which is what keeps generation cost bounded (§14, §18).
+ */
+export const actionSpecs = pgTable("action_specs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  opportunityId: uuid("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+  channel: text("channel").notNull(),
+  actionType: text("action_type").notNull(),
+  angle: text("angle").notNull(),
+  hookType: text("hook_type"),
+  formatKey: text("format_key"),
+  ctaType: text("cta_type"),
+  objective: text("objective").notNull().default(""),
+  featureVectorJson: jsonb("feature_vector_json").$type<Record<string, unknown>>().notNull().default({}),
+  evidenceIdsJson: jsonb("evidence_ids_json").$type<string[]>().notNull().default([]),
+  /** candidate | chosen | declined | published */
+  status: text("status").notNull().default("candidate"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("action_specs_unique_idx").on(t.opportunityId, t.channel, t.actionType, t.angle),
+  index("action_specs_ws_idx").on(t.workspaceId, t.status),
+]);
+
+/** §12 drafts. Versioned — every regeneration is a new version, not an overwrite. */
+export const drafts = pgTable("drafts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  opportunityId: uuid("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+  actionSpecId: uuid("action_spec_id").references(() => actionSpecs.id, { onDelete: "set null" }),
+  channel: text("channel").notNull(),
+  actionType: text("action_type").notNull(),
+  angle: text("angle").notNull(),
+  contentJson: jsonb("content_json").$type<Record<string, unknown>>().notNull(),
+  reviewJson: jsonb("review_json").$type<Record<string, unknown> | null>(),
+  checksJson: jsonb("checks_json").$type<Record<string, unknown>>().notNull().default({}),
+  /** §15 — every draft preserves the source items it was generated from. */
+  sourceItemIdsJson: jsonb("source_item_ids_json").$type<string[]>().notNull().default([]),
+  promptVersion: text("prompt_version"),
+  model: text("model"),
+  origin: text("origin").notNull().default("model"),   // model | heuristic | human
+  version: integer("version").notNull().default(1),
+  state: text("state").notNull().default("draft"),     // draft | edited | approved | discarded
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("drafts_ws_opportunity_idx").on(t.workspaceId, t.opportunityId),
+  index("drafts_ws_channel_idx").on(t.workspaceId, t.channel),
+]);
+
+/**
+ * §5.4 — "Store every meaningful edit as a diff/event."
+ *
+ * This is operator memory class D at its highest resolution: what the human
+ * changed about what the machine wrote is the most direct signal available.
+ */
+export const draftEdits = pgTable("draft_edits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  draftId: uuid("draft_id").notNull().references(() => drafts.id, { onDelete: "cascade" }),
+  fromVersion: integer("from_version").notNull(),
+  toVersion: integer("to_version").notNull(),
+  diffJson: jsonb("diff_json").$type<Record<string, unknown>>().notNull().default({}),
+  /** Fraction of characters changed. Computed, not estimated. */
+  changeRatio: real("change_ratio").notNull().default(0),
+  actor: text("actor").notNull().default("user"),
+  intent: text("intent"),      // sharper | more_technical | more_personal | shorten | add_evidence | manual
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("draft_edits_draft_idx").on(t.draftId, t.createdAt)]);

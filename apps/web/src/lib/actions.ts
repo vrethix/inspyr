@@ -5,10 +5,13 @@ import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   db, users, workspaces, workspaceMemory, sources, opportunities,
-  opportunitySources, sourceItems, feedbackEvents, strategySignals,
+  opportunitySources, sourceItems, feedbackEvents, strategySignals, drafts,
 } from "@inspyr/db";
-import { runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities } from "@inspyr/pipeline";
-import type { FeedbackEventType, OpportunityStatus } from "@inspyr/shared";
+import {
+  runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
+  generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
+} from "@inspyr/pipeline";
+import type { FeedbackEventType, OpportunityStatus, Platform, DraftContent } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
 import { requireWorkspace, setActiveWorkspace } from "./workspace";
 
@@ -272,4 +275,83 @@ export async function decideOpportunity(fd: FormData) {
 
   revalidatePath("/today");
   revalidatePath("/growth");
+}
+
+
+// -------------------------------------------------------------------- create
+
+/**
+ * §5.4 — Create never starts from a blank composer. It starts from an
+ * opportunity, and each channel gets its own native piece, not a reformat.
+ */
+export async function createDraft(fd: FormData) {
+  const ws = await requireWorkspace();
+  const opportunityId = str(fd, "opportunityId");
+  const channel = str(fd, "channel") as Platform;
+
+  await generateDraft({ workspaceId: ws.id, opportunityId, channel });
+
+  // Choosing to create is a learning event, and a strong one.
+  const [opp] = await db.select().from(opportunities)
+    .where(and(eq(opportunities.id, opportunityId), eq(opportunities.workspaceId, ws.id))).limit(1);
+  if (opp && opp.status !== "created") {
+    await db.update(opportunities).set({ status: "created", updatedAt: new Date() })
+      .where(eq(opportunities.id, opportunityId));
+
+    const links = await db.select({ id: opportunitySources.sourceItemId })
+      .from(opportunitySources).where(eq(opportunitySources.opportunityId, opportunityId));
+    const items = links.length
+      ? await db.select({ topics: sourceItems.topicsJson }).from(sourceItems)
+          .where(and(eq(sourceItems.workspaceId, ws.id), inArray(sourceItems.id, links.map((l) => l.id))))
+      : [];
+
+    await recordEvent(ws.id, "opportunity_created", "opportunity", opportunityId, {
+      topics: [...new Set(items.flatMap((i) => i.topics))].slice(0, 12),
+      decision: "created", title: opp.title,
+    });
+    await recomputeStrategySignals(ws.id);
+    await rankOpportunities(ws.id);
+  }
+
+  revalidatePath(`/create/${opportunityId}`);
+  revalidatePath("/today");
+}
+
+export async function planChannels(fd: FormData) {
+  const ws = await requireWorkspace();
+  const opportunityId = str(fd, "opportunityId");
+  await generateActionSpecs(ws.id, opportunityId);
+  revalidatePath(`/create/${opportunityId}`);
+}
+
+export async function saveDraft(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const draftId = str(fd, "draftId");
+  const raw = str(fd, "content");
+
+  let content: DraftContent;
+  try {
+    content = JSON.parse(raw) as DraftContent;
+  } catch {
+    return { error: "Could not read the edited draft." };
+  }
+
+  await recordDraftEdit({
+    workspaceId: ws.id, draftId, content, intent: str(fd, "intent") || "manual",
+  });
+  revalidatePath(`/create/${str(fd, "opportunityId")}`);
+  return { ok: true };
+}
+
+export async function approveDraftAction(fd: FormData) {
+  const ws = await requireWorkspace();
+  await approveDraft(ws.id, str(fd, "draftId"));
+  revalidatePath(`/create/${str(fd, "opportunityId")}`);
+}
+
+export async function discardDraft(fd: FormData) {
+  const ws = await requireWorkspace();
+  await db.update(drafts).set({ state: "discarded", updatedAt: new Date() })
+    .where(and(eq(drafts.id, str(fd, "draftId")), eq(drafts.workspaceId, ws.id)));
+  revalidatePath(`/create/${str(fd, "opportunityId")}`);
 }

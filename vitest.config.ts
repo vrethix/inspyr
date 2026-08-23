@@ -13,6 +13,7 @@ export default defineConfig({
       "@inspyr/ingestion": r("./packages/ingestion/src/index.ts"),
       "@inspyr/ranking": r("./packages/ranking/src/index.ts"),
       "@inspyr/pipeline": r("./packages/pipeline/src/index.ts"),
+      "@inspyr/channels": r("./packages/channels/src/index.ts"),
     },
   },
 });

@@ -42,7 +42,6 @@ export default async function OpportunityDetail({ params }: { params: Promise<{ 
     .sort((a, b) => COMPONENT_WEIGHTS[b] * components[b] - COMPONENT_WEIGHTS[a] * components[a]);
 
   const decisions = [
-    { value: "created", label: "Create", primary: true },
     { value: "saved", label: "Save" },
     { value: "skipped", label: "Skip" },
     { value: "already_covered", label: "Already covered" },
@@ -168,11 +167,17 @@ export default async function OpportunityDetail({ params }: { params: Promise<{ 
         </div>
 
         <div className="actions">
+          {/* Create is a navigation, not a decision: the decision is recorded
+              when a draft is actually generated. */}
+          <Link href={`/create/${opp.id}`} className="btn"
+            style={{ background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }}>
+            Create
+          </Link>
           {decisions.map((d) => (
             <form key={d.value} action={decideOpportunity}>
               <input type="hidden" name="opportunityId" value={opp.id} />
               <input type="hidden" name="decision" value={d.value} />
-              <button type="submit" data-variant={d.primary ? "primary" : undefined}>{d.label}</button>
+              <button type="submit">{d.label}</button>
             </form>
           ))}
         </div>

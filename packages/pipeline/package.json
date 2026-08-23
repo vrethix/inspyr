@@ -1,7 +1,19 @@
-{ "name": "@inspyr/pipeline", "version": "0.1.0", "private": true, "type": "module",
-  "main": "./src/index.ts", "exports": { ".": "./src/index.ts" },
+{
+  "name": "@inspyr/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
     "drizzle-orm": "^0.44.5",
-    "@inspyr/db": "*", "@inspyr/shared": "*", "@inspyr/ai": "*",
-    "@inspyr/ingestion": "*", "@inspyr/ranking": "*"
-  } }
+    "@inspyr/db": "*",
+    "@inspyr/shared": "*",
+    "@inspyr/ai": "*",
+    "@inspyr/ingestion": "*",
+    "@inspyr/ranking": "*",
+    "@inspyr/channels": "*"
+  }
+}

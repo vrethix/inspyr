@@ -15,7 +15,7 @@
     "build": "npm run build --workspace=@inspyr/web",
     "db:push": "npm run push --workspace=@inspyr/db",
     "db:seed": "npm run seed --workspace=@inspyr/db",
-    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/db/tsconfig.json && tsc --noEmit -p packages/ai/tsconfig.json && tsc --noEmit -p packages/ingestion/tsconfig.json && tsc --noEmit -p packages/ranking/tsconfig.json && tsc --noEmit -p packages/pipeline/tsconfig.json && tsc --noEmit -p apps/worker/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/db/tsconfig.json && tsc --noEmit -p packages/ai/tsconfig.json && tsc --noEmit -p packages/ingestion/tsconfig.json && tsc --noEmit -p packages/ranking/tsconfig.json && tsc --noEmit -p packages/channels/tsconfig.json && tsc --noEmit -p packages/pipeline/tsconfig.json && tsc --noEmit -p apps/worker/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
     "test": "DATABASE_URL=postgresql://localhost:5432/inspyr_test vitest run",
     "db:push:test": "cd packages/db && DATABASE_URL=postgresql://localhost:5432/inspyr_test drizzle-kit push --force"
   },

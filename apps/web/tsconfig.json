@@ -27,6 +27,9 @@
       ],
       "@inspyr/pipeline": [
         "../../packages/pipeline/src/index.ts"
+      ],
+      "@inspyr/channels": [
+        "../../packages/channels/src/index.ts"
       ]
     },
     "plugins": [

@@ -82,9 +82,10 @@ npm run run-cycle --workspace=@inspyr/worker -- aitorch
 the whole loop still runs — lower quality, clearly labelled in the UI, never silently.
 
 ```bash
-npm test                                  # 45 tests
+npm test                                  # 70 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch    # proves a decision changes the next ranking
+npx tsx scripts/verify-create.ts aitorch  # proves each channel gets its own artefact
 ```
 
 ---
@@ -99,6 +100,7 @@ packages/db         Drizzle schema, tenant scoping, seed
 packages/ai         provider interface, Anthropic provider, deterministic fallback
 packages/ingestion  fetchers, normalization, dedupe, clustering
 packages/ranking    the ranker and the operator learner
+packages/channels   channel policies, writer, reviewer, action specs
 packages/pipeline   the cycle that wires them together, with tracing
 
 docs/
@@ -115,6 +117,12 @@ docs/
 **Milestone 1 is done:** source → opportunity → ranked Today queue, with audience-fatigue
 modelling and operator learning. A decision made today measurably changes tomorrow's
 ranking — verified against the real database, not only in a unit test.
+
+**Create is done:** one opportunity becomes four genuinely different native artefacts — an X
+thread, a LinkedIn post, an Instagram carousel, a YouTube explainer — each with its own
+action space, constraints and reward function. Switching channel is not a reformat. Every
+edit you make is measured and stored, because how much you rewrite is the sharpest signal
+the system gets.
 
 **Nothing is published yet.** No calendar, no scheduler, no social adapters. Deliberately:
 none of that gets built until the operator says *"Inspyr found something I genuinely want
