@@ -346,3 +346,63 @@ export const draftEdits = pgTable("draft_edits", {
   intent: text("intent"),      // sharper | more_technical | more_personal | shorten | add_evidence | manual
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("draft_edits_draft_idx").on(t.draftId, t.createdAt)]);
+
+/**
+ * A live conversation Inspyr could enter.
+ *
+ * Distinct from a source item: a source item is something to talk *about*, a
+ * conversation target is somewhere to be *seen*. Below ~1,000 followers the
+ * second is the only distribution that exists, so it gets its own table, its
+ * own scoring function and its own hard gates.
+ */
+export const conversationTargets = pgTable("conversation_targets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull().default("x"),
+  url: text("url").notNull(),
+  authorHandle: text("author_handle").notNull().default(""),
+  authorFollowers: integer("author_followers").notNull().default(0),
+  reachBand: text("reach_band"),
+  postedAt: timestamp("posted_at", { withTimezone: true }).notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
+  replyDepth: integer("reply_depth").notNull().default(0),
+  text: text("text").notNull().default(""),
+  topicsJson: jsonb("topics_json").$type<string[]>().notNull().default([]),
+
+  score: real("score").notNull().default(0),
+  eligible: boolean("eligible").notNull().default(false),
+  componentsJson: jsonb("components_json").$type<Record<string, number>>().notNull().default({}),
+  gateFailuresJson: jsonb("gate_failures_json").$type<{ gate: string; reason: string }[]>().notNull().default([]),
+  reasonsJson: jsonb("reasons_json").$type<unknown[]>().notNull().default([]),
+  contribution: text("contribution"),
+
+  status: text("status").notNull().default("new"),   // new | replied | skipped | expired
+  contentHash: text("content_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("conversation_targets_ws_hash_idx").on(t.workspaceId, t.contentHash),
+  index("conversation_targets_ws_score_idx").on(t.workspaceId, t.score),
+]);
+
+/**
+ * What actually happened after a reply.
+ *
+ * Logged from the first reply onward — not because a model is waiting to be
+ * trained on it, but because an online prior needs observations and because
+ * "102 impressions, zero engagement" is only a lesson if it is written down.
+ */
+export const replyOutcomes = pgTable("reply_outcomes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  conversationTargetId: uuid("conversation_target_id").references(() => conversationTargets.id, { onDelete: "set null" }),
+  replyUrl: text("reply_url"),
+  text: text("text").notNull().default(""),
+  /** The feature vector as it was at decision time — never recomputed later. */
+  featuresJson: jsonb("features_json").$type<Record<string, unknown>>().notNull().default({}),
+  impressions: integer("impressions"),
+  engagements: integer("engagements"),
+  profileVisits: integer("profile_visits"),
+  followsGained: integer("follows_gained"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("reply_outcomes_ws_idx").on(t.workspaceId, t.createdAt)]);

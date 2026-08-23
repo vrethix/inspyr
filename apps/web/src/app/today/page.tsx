@@ -8,6 +8,7 @@ import { runCycleNow } from "@/lib/actions";
 import { Nav } from "@/components/Nav";
 import { relativeTime, evidenceLabel } from "@/lib/format";
 import { fatigueLevel } from "@inspyr/shared";
+import { timelineAdvice } from "@inspyr/pipeline";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,9 @@ export default async function Today() {
     .sort((a, b) => b.fatigueScore - a.fatigueScore)
     .slice(0, 3);
 
+  // Below the reach floor, "what to say" is not the binding constraint.
+  const timeline = await timelineAdvice(ws.id, "x");
+
   const headline = queue.length === 0
     ? "Nothing worth talking about today."
     : `I found ${queue.length} thing${queue.length === 1 ? "" : "s"} worth talking about today.`;
@@ -49,6 +53,17 @@ export default async function Today() {
             {queue.length > 0 && " · ranked by what this workspace should publish first"}
           </p>
         </div>
+
+        {!timeline.viable && timeline.followers > 0 && (
+          <div className="panel" style={{ borderColor: "var(--warn)", marginBottom: 22 }}>
+            <div className="panel-title">Before anything below</div>
+            <p style={{ fontSize: 13.5 }}>{timeline.message}</p>
+            <Link href="/conversations" className="btn"
+              style={{ display: "inline-block", marginTop: 8 }}>
+              Find conversations worth entering
+            </Link>
+          </div>
+        )}
 
         {sourceCount === 0 && (
           <div className="panel" style={{ marginBottom: 22 }}>

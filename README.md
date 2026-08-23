@@ -82,7 +82,7 @@ npm run run-cycle --workspace=@inspyr/worker -- aitorch
 the whole loop still runs — lower quality, clearly labelled in the UI, never silently.
 
 ```bash
-npm test                                  # 70 tests
+npm test                                  # 91 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch    # proves a decision changes the next ranking
 npx tsx scripts/verify-create.ts aitorch  # proves each channel gets its own artefact
@@ -117,6 +117,12 @@ docs/
 **Milestone 1 is done:** source → opportunity → ranked Today queue, with audience-fatigue
 modelling and operator learning. A decision made today measurably changes tomorrow's
 ranking — verified against the real database, not only in a unit test.
+
+**Conversations are done:** below ~300 followers, posting to your own timeline is not
+distribution — it is arithmetic. Inspyr says so plainly, and instead judges which live
+conversations are worth entering, with hard gates on reply depth, staleness, author reach and
+whether you have anything concrete to add. Gates come from how the platforms work, not from a
+training set.
 
 **Create is done:** one opportunity becomes four genuinely different native artefacts — an X
 thread, a LinkedIn post, an Instagram carousel, a YouTube explainer — each with its own

@@ -4,6 +4,7 @@ import { signOut, switchWorkspace } from "@/lib/actions";
 
 const LINKS = [
   { href: "/today", label: "Today" },
+  { href: "/conversations", label: "Conversations" },
   { href: "/sources", label: "Sources" },
   { href: "/memory", label: "Memory" },
   { href: "/growth", label: "Growth" },

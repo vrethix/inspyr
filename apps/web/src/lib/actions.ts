@@ -6,10 +6,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import {
   db, users, workspaces, workspaceMemory, sources, opportunities,
   opportunitySources, sourceItems, feedbackEvents, strategySignals, drafts,
+  conversationTargets,
 } from "@inspyr/db";
 import {
   runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
   generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
+  addConversationTarget, recordReplyOutcome,
 } from "@inspyr/pipeline";
 import type { FeedbackEventType, OpportunityStatus, Platform, DraftContent } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
@@ -354,4 +356,111 @@ export async function discardDraft(fd: FormData) {
   await db.update(drafts).set({ state: "discarded", updatedAt: new Date() })
     .where(and(eq(drafts.id, str(fd, "draftId")), eq(drafts.workspaceId, ws.id)));
   revalidatePath(`/create/${str(fd, "opportunityId")}`);
+}
+
+
+// ------------------------------------------------------------- conversations
+
+/**
+ * Discovery is manual — X's API is priced out of reach and scraping breaches
+ * its terms. The operator finds candidates; Inspyr decides which are worth
+ * entering. That is the half that is actually hard.
+ */
+export async function addConversation(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const url = str(fd, "url");
+  if (!/^https?:\/\//.test(url)) return { error: "Paste the full URL of the post." };
+
+  const followers = Number.parseInt(str(fd, "authorFollowers").replace(/[,\s]/g, ""), 10);
+  const depth = Number.parseInt(str(fd, "replyDepth"), 10);
+  const ageMinutes = Number.parseInt(str(fd, "ageMinutes"), 10);
+  if (!Number.isFinite(followers) || !Number.isFinite(depth) || !Number.isFinite(ageMinutes)) {
+    return { error: "Followers, reply count and age are all needed to judge this." };
+  }
+
+  const { result } = await addConversationTarget(ws.id, {
+    url,
+    authorHandle: str(fd, "authorHandle"),
+    authorFollowers: followers,
+    replyDepth: depth,
+    postedAt: new Date(Date.now() - ageMinutes * 60_000),
+    text: str(fd, "text"),
+  });
+
+  revalidatePath("/conversations");
+  return { ok: true, eligible: result.eligible, score: result.score };
+}
+
+export async function skipConversation(fd: FormData) {
+  const ws = await requireWorkspace();
+  await db.update(conversationTargets).set({ status: "skipped" })
+    .where(and(
+      eq(conversationTargets.id, str(fd, "targetId")),
+      eq(conversationTargets.workspaceId, ws.id),
+    ));
+  revalidatePath("/conversations");
+}
+
+/**
+ * The outcome half. Impressions are not success — Tako's failed reply had 102
+ * of them. Conversion is a profile visit or a follow.
+ */
+export async function logReplyOutcome(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const num = (k: string) => {
+    const v = Number.parseInt(str(fd, k), 10);
+    return Number.isFinite(v) ? v : undefined;
+  };
+
+  await recordReplyOutcome({
+    workspaceId: ws.id,
+    conversationTargetId: str(fd, "targetId"),
+    replyUrl: str(fd, "replyUrl") || undefined,
+    text: str(fd, "text") || undefined,
+    impressions: num("impressions"),
+    engagements: num("engagements"),
+    profileVisits: num("profileVisits"),
+    followsGained: num("followsGained"),
+  });
+
+  revalidatePath("/conversations");
+  revalidatePath("/growth");
+  return { ok: true };
+}
+
+/** Follower counts per platform — the input that decides timeline viability. */
+export async function updateAudienceSize(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const sizes: Record<string, number> = {};
+  for (const p of ["x", "linkedin", "instagram", "youtube"]) {
+    const v = Number.parseInt(str(fd, p).replace(/[,\s]/g, ""), 10);
+    if (Number.isFinite(v)) sizes[p] = v;
+  }
+  const row = {
+    workspaceId: ws.id, memoryType: "identity", key: "audience_size",
+    valueJson: sizes, source: "user", confidence: 1, lockedByUser: true, updatedAt: new Date(),
+  };
+  await db.insert(workspaceMemory).values(row).onConflictDoUpdate({
+    target: [workspaceMemory.workspaceId, workspaceMemory.memoryType, workspaceMemory.key],
+    set: row,
+  });
+  revalidatePath("/conversations");
+  revalidatePath("/today");
+  return { ok: true };
+}
+
+/** What this workspace can concretely contribute to a conversation. */
+export async function updateFacts(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const row = {
+    workspaceId: ws.id, memoryType: "identity", key: "facts",
+    valueJson: lines(fd, "facts"), source: "user", confidence: 1,
+    lockedByUser: true, updatedAt: new Date(),
+  };
+  await db.insert(workspaceMemory).values(row).onConflictDoUpdate({
+    target: [workspaceMemory.workspaceId, workspaceMemory.memoryType, workspaceMemory.key],
+    set: row,
+  });
+  revalidatePath("/conversations");
+  return { ok: true };
 }

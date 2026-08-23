@@ -2,6 +2,7 @@
 
 **Milestone 1 — Source → Opportunity → Today.** Complete and verified end to end.
 **Milestone 2 step 1 — Create.** Complete and verified end to end.
+**Conversation opportunities.** Complete and verified against a real failure.
 Last updated: 2026-08-23.
 
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
@@ -113,6 +114,79 @@ about the flow changes.
 
 ---
 
+## Conversation opportunities
+
+Built out of order, ahead of the calendar, because a live account (Tako, 9 followers) exposed
+a gap in the product thesis:
+
+> Inspyr solved **"what should I say."** At 9 followers the binding constraint is
+> **"who will see it."** Those are different problems, and below roughly 300 followers the
+> second one dominates completely.
+
+A post to a 9-follower timeline reaches nine people. That is arithmetic. The only distribution
+available at that stage is a reply that borrows someone else's audience — so replies became a
+first-class opportunity type with their own scoring function and their own hard gates.
+
+### Gates, not weights
+
+The five components (`reply_position` 0.30, `recency` 0.24, `author_reach` 0.20,
+`contribution` 0.18, `topical_fit` 0.08) produce a score. But four conditions **disqualify**
+regardless of score, and all four are derived from mechanism rather than from data:
+
+| Gate | Why it is a gate, not a penalty |
+|---|---|
+| `reply_depth >= 50` | platforms rank replies and collapse the tail; past the fold a reply is not seen regardless of quality |
+| `age > 6h` | reply reach rides the parent post's decay |
+| `author < 200 followers` | no audience to borrow |
+| no contributable fact | personality without information does not convert |
+
+**None of these needed a training set.** They are properties of how the platforms work.
+
+### The regression case
+
+Tako's real failure — a reply 639 deep on a 2.4M-follower account, 102 impressions, zero
+engagement, zero conversion — is a test:
+
+```
+SKIP   the reply that actually failed
+  score 0.0  depth 639  mega  190m old
+  gate: 639 replies already. Past roughly 50 the platform collapses the tail —
+        your reply is not seen regardless of quality.
+  gate: You have nothing concrete to add here.
+
+ENTER  a smaller builder, early, on topic
+  score 85.2  depth 3  mid  9m old
+  add:  Tako scopes agent wallet permissions per session…
+
+SKIP   on topic but far too late     gate: posted 9h ago
+SKIP   right size, nothing to add    gate: no concrete contribution
+```
+
+Inspyr refuses the reply that failed, accepts the one worth making, and names the fact to
+answer with.
+
+### Learning without a training phase
+
+An earlier draft of this proposed fitting a classifier on reply outcomes. That was wrong for
+the same reason the Growth Library is a slow asset: it needs data that does not exist yet.
+
+The implemented design is a three-tier hierarchy instead:
+
+1. **Mechanism** — hard gates. Works at n=0, needs no data, ever.
+2. **Prior updated online** — Beta-Bernoulli per reach band, shrunk toward a mechanism-derived
+   prior. Moves on observation #1; one result can shift a score by at most ~2 points.
+3. **Joint weights** — an optional batch fit much later, once hundreds of outcomes exist. Never
+   a milestone: if features and outcomes are logged as they happen, fitting is an afternoon.
+
+`reply_outcomes` stores the feature vector **frozen at decision time**. Recomputing features
+later would leak outcome knowledge into the record and quietly corrupt every comparison after
+it.
+
+Impressions are explicitly not success. Tako's failure had 102 of them. Conversion is a
+profile visit or a follow.
+
+---
+
 ## What was built
 
 ```
@@ -127,7 +201,7 @@ packages/channels   channel policies, the writer, the reviewer, ActionSpec gener
 packages/pipeline   the cycle that wires them together, with tracing
 ```
 
-**70 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
+**91 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
 
 ---
 
@@ -216,10 +290,12 @@ npm run dev:worker            # optional; queue workers (needs Redis)
 # one full cycle without Redis
 npm run run-cycle --workspace=@inspyr/worker -- aitorch
 
-npm test                      # 70 tests
+npm test                      # 91 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch     # proves acceptance #12
 npx tsx scripts/verify-create.ts aitorch   # proves per-channel drafting
+npx tsx scripts/seed-tako.ts               # a real 9-follower account
+npx tsx scripts/verify-conversations.ts    # replays a real failure through the gates
 ```
 
 Seeded login: `you@inspyr.local` / `inspyr-dev-password`.
