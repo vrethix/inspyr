@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "paths": {
+      "@inspyr/shared": ["./packages/shared/src/index.ts"],
+      "@inspyr/shared/*": ["./packages/shared/src/*"],
+      "@inspyr/db": ["./packages/db/src/index.ts"],
+      "@inspyr/db/*": ["./packages/db/src/*"],
+      "@inspyr/ai": ["./packages/ai/src/index.ts"],
+      "@inspyr/ingestion": ["./packages/ingestion/src/index.ts"],
+      "@inspyr/ranking": ["./packages/ranking/src/index.ts"],
+      "@inspyr/pipeline": ["./packages/pipeline/src/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@inspyr/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3111",
+    "build": "next build",
+    "start": "next start --port 3111"
+  },
+  "dependencies": {
+    "@inspyr/ai": "*",
+    "@inspyr/db": "*",
+    "@inspyr/ingestion": "*",
+    "@inspyr/ranking": "*",
+    "@inspyr/shared": "*",
+    "next": "^16.3.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "@inspyr/pipeline": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7"
+  }
+}

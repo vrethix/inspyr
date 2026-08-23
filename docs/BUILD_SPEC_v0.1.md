@@ -41,7 +41,7 @@ Long-term category:
 **Know what to say next.**
 
 ### Supporting line
-Inspyr watches what you build, finds the moments worth sharing, turns them into native content for every channel, publishes them, and learns what grows your audience.
+Inspyr watches your work and your market, finds the moments worth sharing, turns them into native content for every channel, publishes them, and learns what grows your audience.
 
 ## User promise
 The user should not need to open Inspyr with a content idea.

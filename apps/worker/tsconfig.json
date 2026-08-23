@@ -1,0 +1,3 @@
+{ "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "baseUrl": "../..", "module": "ESNext", "target": "ES2022" },
+  "include": ["src/**/*.ts"] }

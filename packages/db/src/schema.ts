@@ -1,0 +1,251 @@
+import {
+  pgTable, text, timestamp, integer, real, boolean, jsonb, uuid,
+  index, uniqueIndex, primaryKey,
+} from "drizzle-orm/pg-core";
+
+/**
+ * BUILD_SPEC_v0.1 §12 core data model, plus the ARCHITECTURE_v0.2 additions
+ * needed for Milestone 1 (audience_state, agent_runs, agent_steps).
+ *
+ * Every workspace-owned table carries workspace_id and is queried through the
+ * tenant-scoped helpers in ./tenant.ts — §28.13.
+ */
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("sessions_user_idx").on(t.userId)]);
+
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  /** Free text: what growth means for this identity. */
+  objective: text("objective").notNull().default(""),
+  timezone: text("timezone").notNull().default("UTC"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("workspaces_owner_slug_idx").on(t.ownerId, t.slug)]);
+
+/**
+ * §5.7 memory classes. `source` distinguishes what the user TOLD Inspyr from
+ * what Inspyr LEARNED — the UI must never blur the two.
+ */
+export const workspaceMemory = pgTable("workspace_memory", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  memoryType: text("memory_type").notNull(),          // identity | content | outcome | operator
+  key: text("key").notNull(),
+  valueJson: jsonb("value_json").notNull(),
+  source: text("source").notNull().default("user"),   // user | learned
+  confidence: real("confidence").notNull().default(1),
+  lockedByUser: boolean("locked_by_user").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("workspace_memory_key_idx").on(t.workspaceId, t.memoryType, t.key),
+  index("workspace_memory_ws_idx").on(t.workspaceId),
+]);
+
+export const sources = pgTable("sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),                        // rss | url | note | github | youtube
+  label: text("label").notNull().default(""),
+  configJson: jsonb("config_json").notNull(),
+  status: text("status").notNull().default("active"),  // active | disabled | error
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  syncCursor: text("sync_cursor"),
+  itemsIngested: integer("items_ingested").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("sources_ws_idx").on(t.workspaceId)]);
+
+export const sourceItems = pgTable("source_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  sourceId: uuid("source_id").notNull().references(() => sources.id, { onDelete: "cascade" }),
+  externalId: text("external_id"),
+  canonicalUrl: text("canonical_url"),
+  title: text("title").notNull().default(""),
+  rawText: text("raw_text").notNull().default(""),
+  normalizedText: text("normalized_text").notNull().default(""),
+  summary: text("summary"),
+  topicsJson: jsonb("topics_json").$type<string[]>().notNull().default([]),
+  entitiesJson: jsonb("entities_json").$type<string[]>().notNull().default([]),
+  claimsJson: jsonb("claims_json").$type<{ text: string; supported: boolean }[]>().notNull().default([]),
+  contentType: text("content_type"),
+  sourceConfidence: real("source_confidence"),
+  understoodAt: timestamp("understood_at", { withTimezone: true }),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
+  // NOTE: no embedding column yet. Milestone 1 dedupe and clustering use
+  // lexical cosine (packages/shared/src/text.ts). pgvector + a real embedding
+  // provider land in Milestone 2 — see docs/implementation-status.md.
+  contentHash: text("content_hash").notNull(),
+}, (t) => [
+  // §12: unique on (source_id, external_id) where possible, plus content_hash dedupe.
+  uniqueIndex("source_items_source_external_idx").on(t.sourceId, t.externalId),
+  uniqueIndex("source_items_ws_hash_idx").on(t.workspaceId, t.contentHash),
+  index("source_items_ws_observed_idx").on(t.workspaceId, t.observedAt),
+]);
+
+export const opportunities = pgTable("opportunities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  clusterKey: text("cluster_key").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull().default(""),
+  whyItMatters: text("why_it_matters").notNull().default(""),
+  whyItFits: text("why_it_fits").notNull().default(""),
+  whyNow: text("why_now").notNull().default(""),
+  status: text("status").notNull().default("new"),
+  score: real("score").notNull().default(0),
+  /** §7: never store only score=94. Components and adjustments are the reasoning. */
+  scoreComponentsJson: jsonb("score_components_json").$type<Record<string, number>>().notNull().default({}),
+  adjustmentsJson: jsonb("adjustments_json").$type<Record<string, number>>().notNull().default({}),
+  fatigueJson: jsonb("fatigue_json").$type<Record<string, unknown>>().notNull().default({}),
+  recommendedAngle: text("recommended_angle"),
+  anglesJson: jsonb("angles_json").$type<unknown[]>().notNull().default([]),
+  recommendedOutputsJson: jsonb("recommended_outputs_json").$type<unknown[]>().notNull().default([]),
+  /** Evidence tier + sample size behind any surfaced number. ARCHITECTURE_v0.2 §1.2 */
+  evidenceTier: text("evidence_tier").notNull().default("none"),
+  evidenceSampleSize: integer("evidence_sample_size").notNull().default(0),
+  understandingSource: text("understanding_source").notNull().default("heuristic"), // heuristic | model
+  /** Cleared the relevance floor — proposed in Today rather than merely ranked. */
+  qualifies: boolean("qualifies").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("opportunities_ws_cluster_idx").on(t.workspaceId, t.clusterKey),
+  index("opportunities_ws_score_idx").on(t.workspaceId, t.score),
+  index("opportunities_ws_status_idx").on(t.workspaceId, t.status),
+]);
+
+export const opportunitySources = pgTable("opportunity_sources", {
+  opportunityId: uuid("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+  sourceItemId: uuid("source_item_id").notNull().references(() => sourceItems.id, { onDelete: "cascade" }),
+  relevance: real("relevance").notNull().default(1),
+}, (t) => [primaryKey({ columns: [t.opportunityId, t.sourceItemId] })]);
+
+export const feedbackEvents = pgTable("feedback_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  actor: text("actor").notNull().default("user"),      // user | system
+  metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  causalParentId: uuid("causal_parent_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("feedback_events_ws_idx").on(t.workspaceId, t.createdAt),
+  index("feedback_events_entity_idx").on(t.entityType, t.entityId),
+]);
+
+/**
+ * §8.4. In Milestone 1 these come from operator behaviour (skips/rejects), not
+ * outcomes — ARCHITECTURE_v0.2 §9: operator learning is the week-3 story,
+ * outcome learning is the week-8 one.
+ */
+export const strategySignals = pgTable("strategy_signals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  dimension: text("dimension").notNull(),             // topic | operator_preference | format | hook
+  key: text("key").notNull(),
+  channel: text("channel"),
+  contextJson: jsonb("context_json").$type<Record<string, unknown>>().notNull().default({}),
+  effect: real("effect").notNull(),                   // -1..1
+  confidence: real("confidence").notNull(),           // 0..1
+  sampleSize: integer("sample_size").notNull().default(0),
+  source: text("source").notNull(),                   // repeated_skips | repeated_approvals | outcome
+  evidenceStart: timestamp("evidence_start", { withTimezone: true }),
+  evidenceEnd: timestamp("evidence_end", { withTimezone: true }),
+  active: boolean("active").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("strategy_signals_key_idx").on(t.workspaceId, t.dimension, t.key, t.channel),
+  index("strategy_signals_ws_idx").on(t.workspaceId),
+]);
+
+/** ARCHITECTURE_v0.2 §3.4 / §13 — audience_state. Works at n=0. */
+export const audienceState = pgTable("audience_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  dimension: text("dimension").notNull(),             // topic | format | hook | cta
+  key: text("key").notNull(),
+  fatigueScore: real("fatigue_score").notNull().default(0),
+  recentCount: integer("recent_count").notNull().default(0),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("audience_state_key_idx").on(t.workspaceId, t.dimension, t.key),
+  index("audience_state_ws_idx").on(t.workspaceId),
+]);
+
+/**
+ * ARCHITECTURE_v0.2 §17.28 — every agent step is persisted. This is the
+ * observability story, the "why did you say this?" UI, and the eval substrate.
+ */
+export const agentRuns = pgTable("agent_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  trigger: text("trigger").notNull(),                 // daily_plan | manual | source_sync
+  goal: text("goal").notNull().default(""),
+  state: text("state").notNull().default("running"),  // running | succeeded | failed
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  tokenCost: integer("token_cost").notNull().default(0),
+  errorJson: jsonb("error_json").$type<Record<string, unknown> | null>(),
+}, (t) => [index("agent_runs_ws_idx").on(t.workspaceId, t.startedAt)]);
+
+export const agentSteps = pgTable("agent_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agentRunId: uuid("agent_run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  agentRole: text("agent_role").notNull(),
+  toolName: text("tool_name").notNull(),
+  inputJson: jsonb("input_json").$type<Record<string, unknown>>().notNull().default({}),
+  outputJson: jsonb("output_json").$type<Record<string, unknown>>().notNull().default({}),
+  model: text("model"),
+  promptVersion: text("prompt_version"),
+  latencyMs: integer("latency_ms").notNull().default(0),
+  tokenCost: integer("token_cost").notNull().default(0),
+  status: text("status").notNull().default("ok"),     // ok | error
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("agent_steps_run_idx").on(t.agentRunId, t.seq)]);
+
+/**
+ * Content this workspace has already put out.
+ *
+ * BUILD_SPEC_v0.1 §5.7-B (content memory) and §22 ("import last 30-90 days of
+ * content"). Without it, novelty and fatigue have no baseline on day one — the
+ * two components that make Inspyr's first recommendations non-obvious. Filled
+ * by import now; by the publishing loop in Milestone 2.
+ */
+export const priorContent = pgTable("prior_content", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  platform: text("platform"),
+  externalUrl: text("external_url"),
+  title: text("title").notNull(),
+  text: text("text").notNull().default(""),
+  topicsJson: jsonb("topics_json").$type<string[]>().notNull().default([]),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+  origin: text("origin").notNull().default("imported"),   // imported | published | opportunity
+  contentHash: text("content_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("prior_content_ws_hash_idx").on(t.workspaceId, t.contentHash),
+  index("prior_content_ws_published_idx").on(t.workspaceId, t.publishedAt),
+]);

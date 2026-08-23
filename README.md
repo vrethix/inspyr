@@ -2,7 +2,7 @@
 
 > **Know what to say next.**
 
-Inspyr is a self-learning growth engine. It watches what you build and what your market is talking about, works out what is actually worth saying, creates the right content for each channel, publishes it, and learns from what really happened.
+Inspyr is a self-learning growth engine. It watches your work and your market, works out what is actually worth saying, creates the right content for each channel, publishes it, and learns from what really happened.
 
 A scheduler asks *"what would you like to post?"*
 
@@ -56,26 +56,71 @@ Three rules govern the whole thing:
 
 ---
 
+## Running it
+
+Needs PostgreSQL 16+ and (optionally) Redis running locally.
+
+```bash
+createdb inspyr && createdb inspyr_test
+cp .env.example .env          # then edit SESSION_SECRET
+
+npm install
+npm run db:push               # schema
+npm run db:push:test
+npm run db:seed               # user + two workspaces with different strategies
+
+npm run dev                   # http://localhost:3111
+```
+
+Sign in as `you@inspyr.local` / `inspyr-dev-password`, then run one cycle:
+
+```bash
+npm run run-cycle --workspace=@inspyr/worker -- aitorch
+```
+
+`ANTHROPIC_API_KEY` is optional. Without it Inspyr falls back to deterministic heuristics so
+the whole loop still runs — lower quality, clearly labelled in the UI, never silently.
+
+```bash
+npm test                                  # 45 tests
+npm run typecheck
+npx tsx scripts/verify-loop.ts aitorch    # proves a decision changes the next ranking
+```
+
+---
+
 ## Repo
 
 ```
-docs/
-  ARCHITECTURE_v0.2.md    current architecture — Intelligence Layer, GTM Agent, Growth Simulator
-  BUILD_SPEC_v0.1.md      product + engineering spec (§6–§9 superseded by v0.2)
-  POSITIONING.md          positioning and category
-```
+apps/web            Next.js 16 · React 19 · server actions
+apps/worker         BullMQ workers + a CLI cycle runner that needs no Redis
+packages/shared     contracts (Zod), scoring math, fatigue math, text utils
+packages/db         Drizzle schema, tenant scoping, seed
+packages/ai         provider interface, Anthropic provider, deterministic fallback
+packages/ingestion  fetchers, normalization, dedupe, clustering
+packages/ranking    the ranker and the operator learner
+packages/pipeline   the cycle that wires them together, with tracing
 
-Start with `docs/ARCHITECTURE_v0.2.md`. It states what it replaces.
+docs/
+  ARCHITECTURE_v0.2.md      Intelligence Layer, GTM Agent, Growth Simulator
+  BUILD_SPEC_v0.1.md        product + engineering spec (§6-§9 superseded by v0.2)
+  implementation-status.md  what is actually built, and what is not
+  POSITIONING.md
+```
 
 ---
 
 ## Status
 
-Design-locked. Implementation not started.
+**Milestone 1 is done:** source → opportunity → ranked Today queue, with audience-fatigue
+modelling and operator learning. A decision made today measurably changes tomorrow's
+ranking — verified against the real database, not only in a unit test.
 
-First milestone: **source → opportunity → Today**, plus audience-fatigue modelling — enough that the operator says *"Inspyr found something I genuinely want to publish."*
+**Nothing is published yet.** No calendar, no scheduler, no social adapters. Deliberately:
+none of that gets built until the operator says *"Inspyr found something I genuinely want
+to publish."*
 
-That sentence is the first real milestone. Nothing about calendars or publishing gets built before it.
+See `docs/implementation-status.md` for the honest version, including what does not work.
 
 ---
 

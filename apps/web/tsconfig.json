@@ -1,0 +1,47 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "preserve",
+    "allowJs": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@inspyr/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@inspyr/db": [
+        "../../packages/db/src/index.ts"
+      ],
+      "@inspyr/ai": [
+        "../../packages/ai/src/index.ts"
+      ],
+      "@inspyr/ingestion": [
+        "../../packages/ingestion/src/index.ts"
+      ],
+      "@inspyr/ranking": [
+        "../../packages/ranking/src/index.ts"
+      ],
+      "@inspyr/pipeline": [
+        "../../packages/pipeline/src/index.ts"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -7,3 +7,8 @@ build/
 .next/
 coverage/
 *.log
+
+.devlog
+.env
+tsconfig.tsbuildinfo
+*.tsbuildinfo

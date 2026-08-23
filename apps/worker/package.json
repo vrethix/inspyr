@@ -1,0 +1,24 @@
+{
+  "name": "@inspyr/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "run-cycle": "tsx src/run-cycle.ts"
+  },
+  "dependencies": {
+    "bullmq": "^5.58.0",
+    "ioredis": "^5.7.0",
+    "@inspyr/db": "*",
+    "@inspyr/shared": "*",
+    "@inspyr/ai": "*",
+    "@inspyr/ingestion": "*",
+    "@inspyr/ranking": "*",
+    "@inspyr/pipeline": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3"
+  }
+}

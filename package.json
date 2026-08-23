@@ -1,0 +1,28 @@
+{
+  "name": "inspyr",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace=@inspyr/web",
+    "dev:worker": "npm run dev --workspace=@inspyr/worker",
+    "build": "npm run build --workspace=@inspyr/web",
+    "db:push": "npm run push --workspace=@inspyr/db",
+    "db:seed": "npm run seed --workspace=@inspyr/db",
+    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/db/tsconfig.json && tsc --noEmit -p packages/ai/tsconfig.json && tsc --noEmit -p packages/ingestion/tsconfig.json && tsc --noEmit -p packages/ranking/tsconfig.json && tsc --noEmit -p packages/pipeline/tsconfig.json && tsc --noEmit -p apps/worker/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
+    "test": "DATABASE_URL=postgresql://localhost:5432/inspyr_test vitest run",
+    "db:push:test": "cd packages/db && DATABASE_URL=postgresql://localhost:5432/inspyr_test drizzle-kit push --force"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "tsx": "^4.20.3",
+    "@types/node": "^22.15.3"
+  }
+}

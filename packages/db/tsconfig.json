@@ -1,0 +1,3 @@
+{ "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "baseUrl": "../.." },
+  "include": ["src/**/*.ts", "drizzle.config.ts"] }
