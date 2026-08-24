@@ -3,7 +3,7 @@
  * checked without driving a browser.
  *   npx tsx scripts/dev-session.ts
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

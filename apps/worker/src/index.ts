@@ -1,4 +1,4 @@
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

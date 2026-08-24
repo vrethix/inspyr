@@ -2,7 +2,7 @@
  * CLI: run one full cycle for a workspace without Redis.
  *   npm run run-cycle --workspace=@inspyr/worker -- <workspace-id|slug>
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

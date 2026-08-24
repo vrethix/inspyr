@@ -3,7 +3,7 @@
  *
  *   npx tsx scripts/verify-conversations.ts
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

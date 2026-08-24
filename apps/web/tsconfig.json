@@ -30,6 +30,9 @@
       ],
       "@inspyr/channels": [
         "../../packages/channels/src/index.ts"
+      ],
+      "@inspyr/shared/*": [
+        "../../packages/shared/src/*.ts"
       ]
     },
     "plugins": [

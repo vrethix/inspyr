@@ -7,6 +7,7 @@ export default defineConfig({
   test: { environment: "node", include: ["tests/**/*.test.ts"], globals: false },
   resolve: {
     alias: {
+      "@inspyr/shared/env": r("./packages/shared/src/env.ts"),
       "@inspyr/shared": r("./packages/shared/src/index.ts"),
       "@inspyr/db": r("./packages/db/src/index.ts"),
       "@inspyr/ai": r("./packages/ai/src/index.ts"),

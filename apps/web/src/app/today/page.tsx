@@ -8,7 +8,9 @@ import { runCycleNow } from "@/lib/actions";
 import { Nav } from "@/components/Nav";
 import { relativeTime, evidenceLabel } from "@/lib/format";
 import { fatigueLevel } from "@inspyr/shared";
-import { timelineAdvice } from "@inspyr/pipeline";
+import { timelineAdvice, nextActions } from "@inspyr/pipeline";
+import { NextActions } from "@/components/NextActions";
+import { ReadinessForm } from "@/components/ReadinessForm";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ export default async function Today() {
 
   // Below the reach floor, "what to say" is not the binding constraint.
   const timeline = await timelineAdvice(ws.id, "x");
+  const actions = await nextActions(ws.id);
 
   const headline = queue.length === 0
     ? "Nothing worth talking about today."
@@ -56,14 +59,12 @@ export default async function Today() {
 
         {!timeline.viable && timeline.followers > 0 && (
           <div className="panel" style={{ borderColor: "var(--warn)", marginBottom: 22 }}>
-            <div className="panel-title">Before anything below</div>
+            <div className="panel-title">Read this first</div>
             <p style={{ fontSize: 13.5 }}>{timeline.message}</p>
-            <Link href="/conversations" className="btn"
-              style={{ display: "inline-block", marginTop: 8 }}>
-              Find conversations worth entering
-            </Link>
           </div>
         )}
+
+        <NextActions data={actions} />
 
         {sourceCount === 0 && (
           <div className="panel" style={{ marginBottom: 22 }}>
@@ -146,6 +147,16 @@ export default async function Today() {
             );
           })}
         </div>
+
+        <details style={{ marginTop: 34 }}>
+          <summary className="panel-title" style={{ cursor: "pointer" }}>
+            What do you have so far?
+          </summary>
+          <p className="note" style={{ margin: "8px 0 12px" }}>
+            Tick what is true today. This changes what Inspyr recommends above.
+          </p>
+          <ReadinessForm initial={actions.readiness} />
+        </details>
 
         {queue.length > 0 && (
           <div className="evidence">

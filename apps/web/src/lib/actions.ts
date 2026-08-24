@@ -11,9 +11,9 @@ import {
 import {
   runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
   generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
-  addConversationTarget, recordReplyOutcome,
+  addConversationTarget, recordReplyOutcome, saveReadiness,
 } from "@inspyr/pipeline";
-import type { FeedbackEventType, OpportunityStatus, Platform, DraftContent } from "@inspyr/shared";
+import { READINESS_KEYS, type FeedbackEventType, type OpportunityStatus, type Platform, type DraftContent, type Readiness } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
 import { requireWorkspace, setActiveWorkspace } from "./workspace";
 
@@ -461,6 +461,18 @@ export async function updateFacts(_prev: unknown, fd: FormData) {
     target: [workspaceMemory.workspaceId, workspaceMemory.memoryType, workspaceMemory.key],
     set: row,
   });
+  revalidatePath("/conversations");
+  return { ok: true };
+}
+
+
+/** What exists today. This is what turns a blocked action into an available one. */
+export async function updateReadiness(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const readiness: Readiness = {};
+  for (const key of READINESS_KEYS) readiness[key] = fd.get(key) === "on";
+  await saveReadiness(ws.id, readiness);
+  revalidatePath("/today");
   revalidatePath("/conversations");
   return { ok: true };
 }

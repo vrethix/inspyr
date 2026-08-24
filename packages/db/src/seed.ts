@@ -7,7 +7,7 @@
  *   npm run db:seed
  *   npm run run-cycle --workspace=@inspyr/worker -- aitorch
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

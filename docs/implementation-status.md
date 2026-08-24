@@ -3,6 +3,7 @@
 **Milestone 1 — Source → Opportunity → Today.** Complete and verified end to end.
 **Milestone 2 step 1 — Create.** Complete and verified end to end.
 **Conversation opportunities.** Complete and verified against a real failure.
+**Next actions.** Inspyr now says what to do instead of only what not to do.
 Last updated: 2026-08-23.
 
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
@@ -187,6 +188,71 @@ profile visit or a follow.
 
 ---
 
+## Next actions — never refuse without an alternative
+
+Conversation opportunities fixed *which reply to make*. It left a worse problem in place:
+at 9 followers Inspyr's answer was "your timeline reaches 9 people, do not post" — and then
+nothing. A correct answer that stops there is a wall.
+
+Two changes.
+
+### 1. Channels where follower count is irrelevant
+
+Inspyr modelled X, LinkedIn, Instagram and YouTube. For a cold-start technical project those
+are the *worst* channels available, because all four are bounded by an audience that does not
+exist yet. Added GitHub, Show HN, Discord and Farcaster, where the artifact is the
+distribution and nobody checks your follower count.
+
+Reach is now typed by mechanism:
+
+| Reach kind | Bounded by | Example |
+|---|---|---|
+| `own_audience` | your follower count — arithmetic | timeline post |
+| `borrowed` | someone else's audience | a reply, an issue on a nearby repo |
+| `artifact` | whether the thing is good | GitHub, Show HN, Discord |
+
+### 2. Value includes what an action unblocks
+
+Ranking on reach alone preferred a ten-minute reply (~300 people) over publishing the repo
+(~200). That is wrong, and not by a little: publishing turns Show HN from blocked into
+available, and Show HN is an order of magnitude larger. So an action's value is its own reach
+plus a discounted sum of the reach it makes possible.
+
+For Tako today — 9 followers, 15 passing tests, nothing public:
+
+```
+DO THIS TODAY
+  1. Put the code on GitHub    reaches ~200, 180 min, unlocks 1135 more
+  2. Write up what broke       reaches ~300, 90 min
+  3. Open a useful issue       reaches ~50,  60 min
+  4. Post to your own timeline reaches ~9,   30 min
+  ...
+
+NOT POSSIBLE YET
+  Post it to Show HN   — needs: Code is public, Someone else can run it
+  Share in a Discord   — needs: Code is public
+  Reply to a conversation — needs: a conversation worth entering
+```
+
+The ordering reverses on its own once the account is large (asserted in tests) — this is a
+consequence of arithmetic, not a rule someone typed in.
+
+### Blocked is a dependency, not a verdict
+
+Every blocked action names the one thing that unblocks it, in plain language, and Today has a
+checklist where the operator ticks off what now exists. Ticking "Code is public" moves three
+actions from blocked to available. The gate stops being a wall and becomes a to-do.
+
+### One bug worth recording
+
+`packages/shared`'s index re-exported `env.ts`, which reads the filesystem. A client component
+imported the index, Turbopack tried to bundle `node:fs`, and the page 500'd. Fixed at the
+root: `env.ts` is no longer reachable from the barrel, and Node entrypoints import
+`@inspyr/shared/env` directly. A package imported by client code must not export Node-only
+modules from its index.
+
+---
+
 ## What was built
 
 ```
@@ -201,7 +267,7 @@ packages/channels   channel policies, the writer, the reviewer, ActionSpec gener
 packages/pipeline   the cycle that wires them together, with tracing
 ```
 
-**91 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
+**113 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
 
 ---
 
@@ -290,7 +356,7 @@ npm run dev:worker            # optional; queue workers (needs Redis)
 # one full cycle without Redis
 npm run run-cycle --workspace=@inspyr/worker -- aitorch
 
-npm test                      # 91 tests
+npm test                      # 113 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch     # proves acceptance #12
 npx tsx scripts/verify-create.ts aitorch   # proves per-channel drafting

@@ -3,7 +3,7 @@
  *
  *   npx tsx scripts/seed-tako.ts
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

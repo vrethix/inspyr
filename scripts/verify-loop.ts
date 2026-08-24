@@ -5,7 +5,7 @@
  *
  *   npx tsx scripts/verify-loop.ts <workspace-slug>
  */
-import { loadEnv } from "@inspyr/shared";
+import { loadEnv } from "@inspyr/shared/env";
 
 loadEnv();
 

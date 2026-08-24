@@ -82,7 +82,7 @@ npm run run-cycle --workspace=@inspyr/worker -- aitorch
 the whole loop still runs — lower quality, clearly labelled in the UI, never silently.
 
 ```bash
-npm test                                  # 91 tests
+npm test                                  # 113 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch    # proves a decision changes the next ranking
 npx tsx scripts/verify-create.ts aitorch  # proves each channel gets its own artefact
@@ -117,6 +117,11 @@ docs/
 **Milestone 1 is done:** source → opportunity → ranked Today queue, with audience-fatigue
 modelling and operator learning. A decision made today measurably changes tomorrow's
 ranking — verified against the real database, not only in a unit test.
+
+**Inspyr never refuses without an alternative:** it ranks what you can actually do today —
+including GitHub, Show HN and Discord, where your follower count does not matter — and shows
+blocked actions with the one thing that unblocks each. An action that makes other actions
+possible is valued for that, so at 9 followers "publish the repo" beats "post about it".
 
 **Conversations are done:** below ~300 followers, posting to your own timeline is not
 distribution — it is arithmetic. Inspyr says so plainly, and instead judges which live
