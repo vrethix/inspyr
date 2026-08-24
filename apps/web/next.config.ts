@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   transpilePackages: [
-    "@inspyr/shared", "@inspyr/db", "@inspyr/ai", "@inspyr/ingestion", "@inspyr/ranking", "@inspyr/pipeline", "@inspyr/channels",
+    "@inspyr/shared", "@inspyr/db", "@inspyr/ai", "@inspyr/ingestion", "@inspyr/ranking", "@inspyr/pipeline", "@inspyr/channels", "@inspyr/voice",
   ],
   experimental: { serverActions: { bodySizeLimit: "2mb" } },
 };

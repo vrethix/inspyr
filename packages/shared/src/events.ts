@@ -8,6 +8,7 @@ export const FEEDBACK_EVENTS = [
   "draft_generated",
   "draft_regenerated",
   "draft_edited",
+  "voice_previewed",
   "draft_approved",
   "publication_scheduled",
   "publication_published",

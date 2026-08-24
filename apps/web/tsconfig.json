@@ -33,6 +33,9 @@
       ],
       "@inspyr/shared/*": [
         "../../packages/shared/src/*.ts"
+      ],
+      "@inspyr/voice": [
+        "../../packages/voice/src/index.ts"
       ]
     },
     "plugins": [

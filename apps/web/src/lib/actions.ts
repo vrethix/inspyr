@@ -6,14 +6,15 @@ import { and, eq, inArray } from "drizzle-orm";
 import {
   db, users, workspaces, workspaceMemory, sources, opportunities,
   opportunitySources, sourceItems, feedbackEvents, strategySignals, drafts,
-  conversationTargets,
+  conversationTargets, publications, opportunitySources as oppSources,
 } from "@inspyr/db";
 import {
   runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
   generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
   addConversationTarget, recordReplyOutcome, saveReadiness,
+  markPublished, recordMetrics,
 } from "@inspyr/pipeline";
-import { READINESS_KEYS, type FeedbackEventType, type OpportunityStatus, type Platform, type DraftContent, type Readiness } from "@inspyr/shared";
+import { READINESS_KEYS, METRIC_KEYS, type Metrics, type MetricKey, type FeedbackEventType, type OpportunityStatus, type Platform, type DraftContent, type Readiness } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
 import { requireWorkspace, setActiveWorkspace } from "./workspace";
 
@@ -475,4 +476,92 @@ export async function updateReadiness(_prev: unknown, fd: FormData) {
   revalidatePath("/today");
   revalidatePath("/conversations");
   return { ok: true };
+}
+
+
+// --------------------------------------------------------------- publications
+
+/** Marks a draft as actually published. This is what starts the outcome loop. */
+export async function publishDraft(fd: FormData) {
+  const ws = await requireWorkspace();
+  const draftId = str(fd, "draftId");
+
+  const [draft] = await db.select().from(drafts)
+    .where(and(eq(drafts.id, draftId), eq(drafts.workspaceId, ws.id))).limit(1);
+  if (!draft) throw new Error("draft not found in this workspace");
+
+  const links = await db.select({ id: oppSources.sourceItemId })
+    .from(oppSources).where(eq(oppSources.opportunityId, draft.opportunityId));
+  const items = links.length
+    ? await db.select({ topics: sourceItems.topicsJson }).from(sourceItems)
+        .where(and(eq(sourceItems.workspaceId, ws.id), inArray(sourceItems.id, links.map((l) => l.id))))
+    : [];
+
+  await markPublished({
+    workspaceId: ws.id,
+    draftId,
+    channel: draft.channel,
+    externalUrl: str(fd, "externalUrl") || undefined,
+    topics: [...new Set(items.flatMap((i) => i.topics))].slice(0, 10),
+  });
+
+  revalidatePath("/published");
+  revalidatePath(`/create/${draft.opportunityId}`);
+}
+
+/** Records something published outside Inspyr, so the loop still closes. */
+export async function addPublication(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const title = str(fd, "title");
+  if (!title) return { error: "What was it?" };
+
+  const daysAgo = Number.parseInt(str(fd, "daysAgo"), 10);
+  const publishedAt = Number.isFinite(daysAgo)
+    ? new Date(Date.now() - daysAgo * 864e5)
+    : new Date();
+
+  await markPublished({
+    workspaceId: ws.id,
+    channel: str(fd, "channel") || "x",
+    title,
+    externalUrl: str(fd, "externalUrl") || undefined,
+    publishedAt,
+    topics: lines(fd, "topics"),
+  });
+
+  revalidatePath("/published");
+  return { ok: true };
+}
+
+/**
+ * The numbers. Inspyr compares them to your own recent posts, not to an
+ * absolute — 400 impressions means nothing until it is next to your normal.
+ */
+export async function logMetrics(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const publicationId = str(fd, "publicationId");
+
+  const metrics: Metrics = {};
+  for (const key of METRIC_KEYS) {
+    const raw = str(fd, key).replace(/[,\s]/g, "");
+    if (!raw) continue;
+    const value = Number.parseFloat(raw);
+    if (Number.isFinite(value)) metrics[key as MetricKey] = value;
+  }
+  if (Object.keys(metrics).length === 0) {
+    return { error: "Enter at least one number." };
+  }
+
+  const horizon = Number.parseInt(str(fd, "horizonHours"), 10);
+  const result = await recordMetrics({
+    workspaceId: ws.id,
+    publicationId,
+    metrics,
+    horizonHours: Number.isFinite(horizon) ? horizon : 24,
+  });
+
+  revalidatePath("/published");
+  revalidatePath("/growth");
+  revalidatePath("/today");
+  return { ok: true, explanation: result.explanation, score: result.score };
 }

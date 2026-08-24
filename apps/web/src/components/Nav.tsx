@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/conversations", label: "Conversations" },
   { href: "/sources", label: "Sources" },
   { href: "/memory", label: "Memory" },
+  { href: "/published", label: "Published" },
   { href: "/growth", label: "Growth" },
 ];
 

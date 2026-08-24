@@ -406,3 +406,95 @@ export const replyOutcomes = pgTable("reply_outcomes", {
   recordedAt: timestamp("recorded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("reply_outcomes_ws_idx").on(t.workspaceId, t.createdAt)]);
+
+/**
+ * Cloned voices, and the consent that permits them.
+ *
+ * `consent_confirmed_at` is the gate. A voice without it cannot be used —
+ * enforced in code, not in documentation. The table exists before cloning does
+ * so the feature cannot ship around it.
+ */
+export const voiceProfiles = pgTable("voice_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("fish-audio"),
+  referenceId: text("reference_id").notNull(),
+  label: text("label").notNull().default(""),
+  consentConfirmedAt: timestamp("consent_confirmed_at", { withTimezone: true }),
+  consentStatement: text("consent_statement"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("voice_profiles_ws_ref_idx").on(t.workspaceId, t.referenceId)]);
+
+/**
+ * Cached audio, keyed by what was said and in which voice.
+ *
+ * §18 — do not spend a call regenerating something unchanged. Clips are short
+ * (about fifteen seconds), so base64 in a column beats standing up object
+ * storage for a preview feature.
+ */
+export const voiceClips = pgTable("voice_clips", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  contentHash: text("content_hash").notNull(),
+  format: text("format").notNull().default("mp3"),
+  model: text("model").notNull(),
+  referenceId: text("reference_id"),
+  audioBase64: text("audio_base64").notNull(),
+  characters: integer("characters").notNull().default(0),
+  latencyMs: integer("latency_ms").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("voice_clips_ws_hash_idx").on(t.workspaceId, t.contentHash)]);
+
+/**
+ * Something that actually went out.
+ *
+ * BUILD_SPEC_v0.1 §12. Until this exists, Inspyr can generate and it can learn
+ * from operator behaviour, but it cannot answer "how did it do" — which is the
+ * question the whole product is built around. Every content type lands here:
+ * a thread, a carousel, a video, a reply. One row per published thing.
+ */
+export const publications = pgTable("publications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  draftId: uuid("draft_id").references(() => drafts.id, { onDelete: "set null" }),
+  channel: text("channel").notNull(),
+  externalUrl: text("external_url"),
+  title: text("title").notNull().default(""),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+
+  // The feature vector, frozen at publish time (§8.2). Never recomputed —
+  // recomputing after the fact leaks outcome knowledge into the record.
+  actionType: text("action_type"),
+  angle: text("angle"),
+  hookType: text("hook_type"),
+  formatKey: text("format_key"),
+  topicsJson: jsonb("topics_json").$type<string[]>().notNull().default([]),
+  lengthBucket: text("length_bucket"),
+  timeBucket: text("time_bucket"),
+
+  /** Normalized against this workspace's own recent baseline (§8.3). */
+  outcomeJson: jsonb("outcome_json").$type<Record<string, number | null>>().notNull().default({}),
+  outcomeScore: real("outcome_score"),
+  baselineSampleSize: integer("baseline_sample_size").notNull().default(0),
+
+  state: text("state").notNull().default("published"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("publications_ws_published_idx").on(t.workspaceId, t.publishedAt),
+  index("publications_ws_channel_idx").on(t.workspaceId, t.channel),
+]);
+
+/** Raw numbers at a point in time. Kept raw; comparison happens on top. */
+export const metricSnapshots = pgTable("metric_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  publicationId: uuid("publication_id").notNull().references(() => publications.id, { onDelete: "cascade" }),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Hours after publishing — 1h and 24h are not comparable. */
+  horizonHours: integer("horizon_hours").notNull().default(24),
+  source: text("source").notNull().default("manual"),   // manual | api | csv
+  metricsJson: jsonb("metrics_json").$type<Record<string, number>>().notNull().default({}),
+}, (t) => [
+  uniqueIndex("metric_snapshots_pub_horizon_idx").on(t.publicationId, t.horizonHours),
+  index("metric_snapshots_ws_idx").on(t.workspaceId, t.capturedAt),
+]);

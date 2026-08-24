@@ -5,12 +5,14 @@ import {
   db, opportunities, opportunitySources, sourceItems, drafts, draftEdits, actionSpecs,
 } from "@inspyr/db";
 import { PLATFORMS, DEFAULT_CHANNEL_POLICIES, type Platform, type DraftContent, type Review } from "@inspyr/shared";
-import { describeChecks, REPETITION_WARN_THRESHOLD } from "@inspyr/channels";
+import { describeChecks } from "@inspyr/channels";
+import { voiceAvailable } from "@inspyr/pipeline";
 import { currentUser } from "@/lib/auth";
 import { activeWorkspace } from "@/lib/workspace";
-import { createDraft, approveDraftAction, discardDraft } from "@/lib/actions";
+import { createDraft, approveDraftAction, discardDraft, publishDraft } from "@/lib/actions";
 import { Nav } from "@/components/Nav";
 import { DraftEditor } from "@/components/DraftEditor";
+import { HearIt } from "@/components/HearIt";
 import { relativeTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +78,7 @@ export default async function Create({
   }) : [];
 
   const angles = (opp.anglesJson ?? []) as { kind: string; thesis: string }[];
+  const canHear = voiceAvailable();
 
   return (
     <div className="shell">
@@ -180,6 +183,8 @@ export default async function Create({
                   initial={draft.contentJson as unknown as DraftContent}
                 />
 
+                <HearIt draftId={draft.id} enabled={canHear} />
+
                 <div className="actions" style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
                   <form action={createDraft}>
                     <input type="hidden" name="opportunityId" value={opp.id} />
@@ -191,6 +196,10 @@ export default async function Create({
                     <input type="hidden" name="draftId" value={draft.id} />
                     <button type="submit" data-variant="primary">Approve</button>
                   </form>
+                  <form action={publishDraft}>
+                    <input type="hidden" name="draftId" value={draft.id} />
+                    <button type="submit" data-variant="primary">I published this</button>
+                  </form>
                   <form action={discardDraft}>
                     <input type="hidden" name="opportunityId" value={opp.id} />
                     <input type="hidden" name="draftId" value={draft.id} />
@@ -198,7 +207,8 @@ export default async function Create({
                   </form>
                 </div>
                 <p className="note" style={{ marginTop: 8 }}>
-                  Approved drafts stop here for now — publishing lands in the next milestone.
+                  Post it yourself, then press &ldquo;I published this&rdquo;. That is how Inspyr
+                  finds out what happened — add the numbers on the Published page later.
                 </p>
               </>
             )}

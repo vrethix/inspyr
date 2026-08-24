@@ -17,7 +17,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "@inspyr/pipeline": "*",
-    "@inspyr/channels": "*"
+    "@inspyr/channels": "*",
+    "@inspyr/voice": "*"
   },
   "devDependencies": {
     "@types/react": "^19.1.10",
