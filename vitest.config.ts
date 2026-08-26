@@ -16,6 +16,7 @@ export default defineConfig({
       "@inspyr/pipeline": r("./packages/pipeline/src/index.ts"),
       "@inspyr/channels": r("./packages/channels/src/index.ts"),
       "@inspyr/voice": r("./packages/voice/src/index.ts"),
+      "@inspyr/social": r("./packages/social/src/index.ts"),
     },
   },
 });

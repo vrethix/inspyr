@@ -27,6 +27,8 @@ export interface PublishInput {
   title?: string;
   publishedAt?: Date;
   topics?: string[];
+  /** The provider's id, so metrics can be fetched back without asking. */
+  providerPostId?: string;
 }
 
 function timeBucket(date: Date): string {
@@ -68,6 +70,7 @@ export async function markPublished(input: PublishInput) {
     draftId: input.draftId ?? null,
     channel: input.channel,
     externalUrl: input.externalUrl ?? null,
+    providerPostId: input.providerPostId ?? null,
     title: features.title,
     publishedAt,
     actionType: features.actionType,

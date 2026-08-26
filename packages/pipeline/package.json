@@ -15,6 +15,7 @@
     "@inspyr/ingestion": "*",
     "@inspyr/ranking": "*",
     "@inspyr/channels": "*",
-    "@inspyr/voice": "*"
+    "@inspyr/voice": "*",
+    "@inspyr/social": "*"
   }
 }

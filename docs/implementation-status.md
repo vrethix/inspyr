@@ -5,6 +5,7 @@
 **Conversation opportunities.** Complete and verified against a real failure.
 **Next actions.** Inspyr now says what to do instead of only what not to do.
 **Stage engine.** Behaviour changes with where the account actually is.
+**Zernio adapter.** Metrics come back on their own, where the platform allows it.
 Last updated: 2026-08-23.
 
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
@@ -334,6 +335,53 @@ learn from. Every stage watches something faster and more precise.
 
 ---
 
+## Zernio adapter — numbers without typing
+
+Typing metrics in by hand does not survive contact with a real week. Zernio covers 16
+platforms for $6 an account, two free, which is the difference between measuring one platform
+and measuring all of them.
+
+Behind `SocialProvider` (§11), so this is one file to replace, not a dependency.
+
+### What it actually gives us
+
+| | via Zernio |
+|---|---|
+| X, Instagram, TikTok | full — impressions, reach, likes, comments, shares, saves, clicks |
+| YouTube | partial — demographics; retention still needs YouTube's own free API |
+| LinkedIn | org pages only, video views only |
+
+The mapping falls back **impressions → reach → views**, so a platform reporting only one of
+them still normalises correctly against the baseline.
+
+### The gap it does not close, and what we did about it
+
+Zernio's documented analytics carry no `follows` and no `profile_visits` — the two numbers
+that matter most for growth. Rather than show a silent zero, the adapter **reports what it
+cannot provide**, and Inspyr keeps its own series instead: `account_snapshots` records the
+follower count every sync, so growth is measurable by difference.
+
+That series is honest about its limits — it cannot attribute a follow to a post, and the UI
+says so:
+
+> Measured by difference. Inspyr cannot say which post caused it, and does not pretend to.
+
+It also feeds the stage engine: synced follower counts land in identity memory marked
+`learned` rather than `user`, so measured and stated numbers stay distinguishable.
+
+### Horizons
+
+Metrics are bucketed by post age into 1h / 24h / 7d, so a fresh number never overwrites a
+settled one. Posts under an hour old are skipped entirely.
+
+### Without a key
+
+Everything still works, manually, and the UI says which platforms could be automatic and
+which never can. LinkedIn personal profiles are in the second group — no API exposes them, to
+anyone.
+
+---
+
 ## What was built
 
 ```
@@ -348,7 +396,7 @@ packages/channels   channel policies, the writer, the reviewer, ActionSpec gener
 packages/pipeline   the cycle that wires them together, with tracing
 ```
 
-**132 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
+**141 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
 
 ---
 
@@ -437,7 +485,7 @@ npm run dev:worker            # optional; queue workers (needs Redis)
 # one full cycle without Redis
 npm run run-cycle --workspace=@inspyr/worker -- aitorch
 
-npm test                      # 132 tests
+npm test                      # 141 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch     # proves acceptance #12
 npx tsx scripts/verify-create.ts aitorch   # proves per-channel drafting

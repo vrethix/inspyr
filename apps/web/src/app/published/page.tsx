@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { listPublications, baselineProgress, hearThenRewriteSignals, describeHearThenRewrite } from "@inspyr/pipeline";
+import {
+  listPublications, baselineProgress, hearThenRewriteSignals, describeHearThenRewrite,
+  socialAvailable, followerGrowth,
+} from "@inspyr/pipeline";
 import { BASELINE_MIN_SAMPLE, CHANNEL_LABELS, type ActionChannel } from "@inspyr/shared";
 import { currentUser } from "@/lib/auth";
 import { activeWorkspace } from "@/lib/workspace";
 import { Nav } from "@/components/Nav";
 import { AddPublicationForm, MetricsForm } from "@/components/PublishedForms";
+import { syncNumbers } from "@/lib/actions";
 import { relativeTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +36,11 @@ export default async function Published() {
     channels.map(async (c) => ({ channel: c, ...(await baselineProgress(ws.id, c)) })),
   );
 
+  const connected = socialAvailable();
+  const growth = await Promise.all(
+    channels.map(async (c) => ({ channel: c, growth: await followerGrowth(ws.id, c) })),
+  );
+
   const measured = rows.filter((r) => typeof r.outcomeScore === "number");
   const best = measured.slice().sort((a, b) => (b.outcomeScore ?? 0) - (a.outcomeScore ?? 0))[0];
 
@@ -46,6 +55,44 @@ export default async function Published() {
             recent posts — not to anyone else&rsquo;s numbers.
           </p>
         </div>
+
+        {connected ? (
+          <form action={syncNumbers} style={{ marginBottom: 20 }}>
+            <button type="submit" data-variant="primary">Pull the latest numbers</button>
+            <p className="note" style={{ marginTop: 5 }}>
+              Fetches metrics and follower counts from your connected accounts.
+            </p>
+          </form>
+        ) : (
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-title">Numbers are manual right now</div>
+            <p className="note">
+              Connect accounts through Zernio (two are free) and set{" "}
+              <span className="mono">ZERNIO_API_KEY</span> in <span className="mono">.env</span>.
+              Inspyr will then pull metrics and follower counts by itself. LinkedIn personal
+              profiles stay manual — no API exposes them, to anyone.
+            </p>
+          </div>
+        )}
+
+        {growth.filter((g) => g.growth).length > 0 && (
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-title">Follower change</div>
+            {growth.filter((g) => g.growth).map(({ channel, growth: g }) => (
+              <div key={channel} className="note" style={{ marginBottom: 3 }}>
+                <strong style={{ fontWeight: 540 }}>{channel}</strong>{" "}
+                {g!.from.toLocaleString()} → {g!.to.toLocaleString()}{" "}
+                <span style={{ color: g!.gained > 0 ? "var(--ok)" : "var(--ink-3)" }}>
+                  ({g!.gained >= 0 ? "+" : ""}{g!.gained.toLocaleString()} in {g!.days} days)
+                </span>
+              </div>
+            ))}
+            <p className="note" style={{ marginTop: 6 }}>
+              Measured by difference. Inspyr cannot say which post caused it, and does not
+              pretend to.
+            </p>
+          </div>
+        )}
 
         {rows.length === 0 ? (
           <div className="panel" style={{ marginBottom: 24 }}>

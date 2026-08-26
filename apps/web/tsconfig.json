@@ -36,6 +36,9 @@
       ],
       "@inspyr/voice": [
         "../../packages/voice/src/index.ts"
+      ],
+      "@inspyr/social": [
+        "../../packages/social/src/index.ts"
       ]
     },
     "plugins": [

@@ -12,7 +12,7 @@ import {
   runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
   generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
   addConversationTarget, recordReplyOutcome, saveReadiness,
-  markPublished, recordMetrics, savePlatformSelection,
+  markPublished, recordMetrics, savePlatformSelection, syncMetrics,
 } from "@inspyr/pipeline";
 import { READINESS_KEYS, METRIC_KEYS, type Metrics, type MetricKey, type FeedbackEventType, type OpportunityStatus, type Platform, type DraftContent, type Readiness } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
@@ -593,4 +593,14 @@ export async function updatePlatforms(_prev: unknown, fd: FormData) {
   revalidatePath("/today");
   revalidatePath("/conversations");
   return { ok: true };
+}
+
+
+/** Pull real numbers in, instead of typing them. */
+export async function syncNumbers() {
+  const ws = await requireWorkspace();
+  await syncMetrics(ws.id);
+  revalidatePath("/published");
+  revalidatePath("/today");
+  revalidatePath("/growth");
 }

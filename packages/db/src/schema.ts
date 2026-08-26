@@ -459,6 +459,8 @@ export const publications = pgTable("publications", {
   draftId: uuid("draft_id").references(() => drafts.id, { onDelete: "set null" }),
   channel: text("channel").notNull(),
   externalUrl: text("external_url"),
+  /** The provider's id for this post, so metrics can be fetched back later. */
+  providerPostId: text("provider_post_id"),
   title: text("title").notNull().default(""),
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
 
@@ -497,4 +499,40 @@ export const metricSnapshots = pgTable("metric_snapshots", {
 }, (t) => [
   uniqueIndex("metric_snapshots_pub_horizon_idx").on(t.publicationId, t.horizonHours),
   index("metric_snapshots_ws_idx").on(t.workspaceId, t.capturedAt),
+]);
+
+/**
+ * Follower count over time, per connected account.
+ *
+ * Zernio's per-post analytics do not include follows or profile visits — the
+ * two numbers that matter most for growth. So Inspyr keeps the series itself:
+ * poll the account, store the count, and follower growth becomes measurable by
+ * difference even when no provider attributes it per post.
+ */
+export const accountSnapshots = pgTable("account_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  externalAccountId: text("external_account_id"),
+  username: text("username").notNull().default(""),
+  followers: integer("followers").notNull(),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+  source: text("source").notNull().default("zernio"),
+}, (t) => [
+  index("account_snapshots_ws_platform_idx").on(t.workspaceId, t.platform, t.capturedAt),
+]);
+
+/** Which provider account maps to which platform for this workspace. */
+export const connectedAccounts = pgTable("connected_accounts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("zernio"),
+  externalAccountId: text("external_account_id").notNull(),
+  platform: text("platform").notNull(),
+  username: text("username").notNull().default(""),
+  connected: boolean("connected").notNull().default(true),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("connected_accounts_ws_external_idx").on(t.workspaceId, t.provider, t.externalAccountId),
 ]);

@@ -24,7 +24,8 @@
       "@inspyr/ranking": ["./packages/ranking/src/index.ts"],
       "@inspyr/pipeline": ["./packages/pipeline/src/index.ts"],
       "@inspyr/channels": ["./packages/channels/src/index.ts"],
-      "@inspyr/voice": ["./packages/voice/src/index.ts"]
+      "@inspyr/voice": ["./packages/voice/src/index.ts"],
+      "@inspyr/social": ["./packages/social/src/index.ts"]
     }
   }
 }
