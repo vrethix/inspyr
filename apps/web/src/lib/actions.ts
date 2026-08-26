@@ -12,7 +12,7 @@ import {
   runCycle, syncSource, importPriorContent, recomputeStrategySignals, rankOpportunities,
   generateDraft, recordDraftEdit, approveDraft, generateActionSpecs,
   addConversationTarget, recordReplyOutcome, saveReadiness,
-  markPublished, recordMetrics,
+  markPublished, recordMetrics, savePlatformSelection,
 } from "@inspyr/pipeline";
 import { READINESS_KEYS, METRIC_KEYS, type Metrics, type MetricKey, type FeedbackEventType, type OpportunityStatus, type Platform, type DraftContent, type Readiness } from "@inspyr/shared";
 import { hashPassword, verifyPassword, createSession, destroySession, requireUser } from "./auth";
@@ -564,4 +564,33 @@ export async function logMetrics(_prev: unknown, fd: FormData) {
   revalidatePath("/growth");
   revalidatePath("/today");
   return { ok: true, explanation: result.explanation, score: result.score };
+}
+
+
+/** Which platforms this creator is actually trying to grow, and where they are. */
+export async function updatePlatforms(_prev: unknown, fd: FormData) {
+  const ws = await requireWorkspace();
+  const channels = ["youtube", "instagram", "x", "linkedin"];
+
+  const selected = channels.filter((c) => fd.get(`platform_${c}`) === "on");
+  await savePlatformSelection(ws.id, selected);
+
+  const sizes: Record<string, number> = {};
+  for (const c of channels) {
+    const raw = str(fd, `followers_${c}`).replace(/[,\s]/g, "");
+    const value = Number.parseInt(raw, 10);
+    if (Number.isFinite(value)) sizes[c] = value;
+  }
+  const row = {
+    workspaceId: ws.id, memoryType: "identity", key: "audience_size",
+    valueJson: sizes, source: "user", confidence: 1, lockedByUser: true, updatedAt: new Date(),
+  };
+  await db.insert(workspaceMemory).values(row).onConflictDoUpdate({
+    target: [workspaceMemory.workspaceId, workspaceMemory.memoryType, workspaceMemory.key],
+    set: row,
+  });
+
+  revalidatePath("/today");
+  revalidatePath("/conversations");
+  return { ok: true };
 }

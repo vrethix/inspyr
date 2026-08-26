@@ -10,6 +10,8 @@ import { relativeTime, evidenceLabel } from "@/lib/format";
 import { fatigueLevel } from "@inspyr/shared";
 import { timelineAdvice, nextActions } from "@inspyr/pipeline";
 import { NextActions } from "@/components/NextActions";
+import { StageBanner } from "@/components/StageBanner";
+import { PlatformPicker } from "@/components/PlatformPicker";
 import { ReadinessForm } from "@/components/ReadinessForm";
 
 export const dynamic = "force-dynamic";
@@ -57,12 +59,7 @@ export default async function Today() {
           </p>
         </div>
 
-        {!timeline.viable && timeline.followers > 0 && (
-          <div className="panel" style={{ borderColor: "var(--warn)", marginBottom: 22 }}>
-            <div className="panel-title">Read this first</div>
-            <p style={{ fontSize: 13.5 }}>{timeline.message}</p>
-          </div>
-        )}
+        <StageBanner data={actions} />
 
         <NextActions data={actions} />
 
@@ -149,6 +146,18 @@ export default async function Today() {
         </div>
 
         <details style={{ marginTop: 34 }}>
+          <summary className="panel-title" style={{ cursor: "pointer" }}>
+            Which platforms, and how big are you there?
+          </summary>
+          <div style={{ marginTop: 10, marginBottom: 24 }}>
+            <PlatformPicker
+              selected={actions.stage.platforms.map((p) => p.platform)}
+              followers={Object.fromEntries(actions.stage.platforms.map((p) => [p.platform, p.followers]))}
+            />
+          </div>
+        </details>
+
+        <details style={{ marginTop: 12 }}>
           <summary className="panel-title" style={{ cursor: "pointer" }}>
             What do you have so far?
           </summary>

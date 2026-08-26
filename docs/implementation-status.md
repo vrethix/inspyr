@@ -4,6 +4,7 @@
 **Milestone 2 step 1 — Create.** Complete and verified end to end.
 **Conversation opportunities.** Complete and verified against a real failure.
 **Next actions.** Inspyr now says what to do instead of only what not to do.
+**Stage engine.** Behaviour changes with where the account actually is.
 Last updated: 2026-08-23.
 
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
@@ -253,6 +254,86 @@ modules from its index.
 
 ---
 
+## The stage engine
+
+An account at 200 followers and one at 200,000 have almost nothing in common. Same
+bottleneck? No. Same levers? No. Most tools give both the same advice, which is why they get
+abandoned — and Inspyr was doing it too.
+
+Everything now reads from `stagePolicy(stage, platform)`.
+
+### Two dimensions, and they are not independent
+
+**Stage:** 0–1k · 1k–10k · 10k–100k · 100k–1M · 1M+
+
+**Platform kind** — the property that decides everything:
+
+| Kind | Meaning | Platforms |
+|---|---|---|
+| `algorithmic` | every post gets tested on strangers regardless of your size | YouTube, TikTok, Instagram |
+| `follower_gated` | reach is roughly bounded by who already follows you | X, LinkedIn, Threads |
+
+Unknown platforms default to `follower_gated` — the safer error, because it stops Inspyr
+promising reach it cannot deliver.
+
+### The same stage produces opposite advice
+
+```
+0–1k on TikTok   [algorithmic]
+  bottleneck  Nobody knows you exist, and you have no history to learn from
+  do          Volume of genuinely different attempts
+  don't       Reposting the same clip everywhere — platforms penalise verbatim duplicates
+  cadence     7/week
+  timeline    worth posting to
+
+0–1k on LinkedIn [follower_gated]
+  bottleneck  Your posts reach roughly the people who already follow you
+  do          Replies under other people's posts — borrows their audience, works at zero
+  don't       Posting to your own timeline — arithmetic, not strategy
+  cadence     25/week (replies, not posts)
+  timeline    NOT worth posting to
+```
+
+### And it changes as the account grows
+
+```
+youtube @       9   0_1k       7/wk   watch: did anything escape your follower count
+youtube @   4,000   1k_10k     5/wk   watch: hit rate — share of posts that break out
+youtube @  40,000   10k_100k   4/wk   watch: share of viewers who don't already follow you
+youtube @ 400,000   100k_1m    6/wk   watch: portfolio performance, not single posts
+```
+
+Cadence goes **down** from 7 to 4 between 0–1k and 10k–100k, because volume stops being the
+constraint and starts being the problem. A tool that pushes "post more" at every stage is
+wrong at three of the four.
+
+### It gates actions, not just ranks them
+
+An action that cannot work at this stage is **blocked with a reason**, not ranked last:
+
+```
+Post to your own timeline — 9 followers on x — your timeline reaches about that
+                            many people. Borrowed reach first.
+```
+
+And on follower-gated platforms early on, borrowed reach gets a 1.6× ranking boost — not a
+preference, it is the only mechanism that reaches strangers there.
+
+### Cold start is a stage, not an exception
+
+`ownDataUseful` is false until the account has published at least 8 times on that platform.
+Below that, Inspyr says so out loud rather than pretending its advice is personalised:
+
+> Not enough of your own history yet, so this is based on how the platform works — not on
+> what has worked for you. That changes as you publish.
+
+### Never measures follower count
+
+Asserted in tests. Followers are the scoreboard; they move too slowly and too noisily to
+learn from. Every stage watches something faster and more precise.
+
+---
+
 ## What was built
 
 ```
@@ -267,7 +348,7 @@ packages/channels   channel policies, the writer, the reviewer, ActionSpec gener
 packages/pipeline   the cycle that wires them together, with tracing
 ```
 
-**113 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
+**132 tests passing. Typecheck clean across all 9 projects. `next build` succeeds.**
 
 ---
 
@@ -356,7 +437,7 @@ npm run dev:worker            # optional; queue workers (needs Redis)
 # one full cycle without Redis
 npm run run-cycle --workspace=@inspyr/worker -- aitorch
 
-npm test                      # 113 tests
+npm test                      # 132 tests
 npm run typecheck
 npx tsx scripts/verify-loop.ts aitorch     # proves acceptance #12
 npx tsx scripts/verify-create.ts aitorch   # proves per-channel drafting

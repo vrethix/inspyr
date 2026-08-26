@@ -6,6 +6,7 @@ import {
   type ActionDefinition, type Readiness, type ReadinessKey, type Platform,
 } from "@inspyr/shared";
 import { audienceSize } from "./conversations";
+import { workspaceStage, stageInstruction, type PlatformStage } from "./stage";
 
 /**
  * "What should I do today?"
@@ -43,6 +44,10 @@ export interface BlockedAction {
 
 export interface NextActions {
   audienceSize: number;
+  /** Where each account actually is. Everything below is shaped by this. */
+  stage: Awaited<ReturnType<typeof workspaceStage>>;
+  /** The blunt one-liner for the top of the screen. */
+  instruction: string | null;
   available: AvailableAction[];
   blocked: BlockedAction[];
   readiness: Readiness;
@@ -88,6 +93,13 @@ function describe(action: ActionDefinition, reach: number, audience: number): st
 export async function nextActions(workspaceId: string): Promise<NextActions> {
   const readiness = await loadReadiness(workspaceId);
   const audience = await audienceSize(workspaceId, "x" as Platform);
+  const stage = await workspaceStage(workspaceId);
+
+  // Stage decides which platforms are even worth acting on, so build a lookup
+  // before ranking anything.
+  const byPlatform = new Map<string, PlatformStage>(
+    stage.platforms.map((p) => [p.platform, p]),
+  );
 
   // Live conversations worth entering — a reply is only real if there is one.
   const openConversations = await db.select().from(conversationTargets)
@@ -114,8 +126,37 @@ export async function nextActions(workspaceId: string): Promise<NextActions> {
       continue;
     }
 
+    const platformStage = byPlatform.get(action.channel);
+    const policy = platformStage?.policy;
+
+    /**
+     * The stage engine's main job: stop recommending things that cannot work
+     * at this stage on this platform. Posting to a timeline that reaches nine
+     * people is not a low-value action, it is a blocked one, and saying so is
+     * more useful than ranking it last.
+     */
+    if (policy && action.reachKind === "own_audience" && !policy.timelineViable) {
+      blocked.push({
+        key: action.key,
+        channelLabel: CHANNEL_LABELS[action.channel],
+        label: action.label,
+        what: action.what,
+        blockedBy: [
+          `${platformStage!.followers} followers on ${action.channel} — your timeline `
+          + `reaches about that many people. Borrowed reach first.`,
+        ],
+      });
+      continue;
+    }
+
     const reach = expectedReach(action, audience);
     const unlocks = unlockValue(action, readiness as Record<string, boolean | undefined>, audience);
+
+    /**
+     * Borrowed reach outranks everything on a follower-gated platform early on.
+     * Not a preference — it is the only mechanism that reaches strangers there.
+     */
+    const stageBoost = policy?.borrowedReachFirst && action.reachKind === "borrowed" ? 1.6 : 1;
 
     // A reply with nothing to reply to is not an available action.
     if (action.key === "reply_conversation" && openConversations.length === 0) {
@@ -140,7 +181,9 @@ export async function nextActions(workspaceId: string): Promise<NextActions> {
         ? Math.round(reach * Math.min(3, openConversations.length))
         : reach,
       unlockValue: unlocks,
-      value: actionValue(action, readiness as Record<string, boolean | undefined>, audience),
+      value: Math.round(
+        actionValue(action, readiness as Record<string, boolean | undefined>, audience) * stageBoost,
+      ),
       effortMinutes: action.effortMinutes,
       detail: action.key === "reply_conversation"
         ? `${openConversations.length} conversation${openConversations.length === 1 ? "" : "s"} ready.`
@@ -154,6 +197,8 @@ export async function nextActions(workspaceId: string): Promise<NextActions> {
 
   return {
     audienceSize: audience,
+    stage,
+    instruction: stage.primary ? stageInstruction(stage.primary) : null,
     available,
     blocked,
     readiness,

@@ -6,3 +6,4 @@ export * from "./conversations";
 export * from "./next-actions";
 export * from "./voice";
 export * from "./publications";
+export * from "./stage";
