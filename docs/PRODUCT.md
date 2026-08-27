@@ -13,7 +13,11 @@ rejected is most of the value.
 > **A growth engine that takes an account from 0 to 1,000 to 10,000 to 100,000, on the
 > platforms the creator chooses, in one place, and gets better because it remembers.**
 
-Customer-facing promise: **Know what to make next.**
+Customer-facing promise: **Know what to say next.**
+
+*("Know what to **make** next" was considered — it fits video better, and the audience is
+mostly making video. "Say" is kept because it covers a reply, a post and a video equally, and
+it is already the promise in four other places. Worth revisiting once the video path is real.)*
 
 ## What it is not
 

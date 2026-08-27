@@ -101,14 +101,20 @@ packages/ai         provider interface, Anthropic provider, deterministic fallba
 packages/ingestion  fetchers, normalization, dedupe, clustering
 packages/ranking    the ranker and the operator learner
 packages/channels   channel policies, writer, reviewer, action specs
+packages/voice      text to speech behind a provider interface
+packages/social     Zernio adapter — publishing and metrics across platforms
 packages/pipeline   the cycle that wires them together, with tracing
 
 docs/
+  PRODUCT.md                START HERE — what is decided, and what was rejected
   ARCHITECTURE_v0.2.md      Intelligence Layer, GTM Agent, Growth Simulator
   BUILD_SPEC_v0.1.md        product + engineering spec (§6-§9 superseded by v0.2)
   implementation-status.md  what is actually built, and what is not
   POSITIONING.md
 ```
+
+Read `docs/PRODUCT.md` first. Where it disagrees with an older doc, it wins — the older doc
+records how the thinking got there.
 
 ---
 

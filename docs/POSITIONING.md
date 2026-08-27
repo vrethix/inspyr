@@ -18,6 +18,9 @@ Example:
 Analytics tells the user what happened.
 Inspyr changes what it does next.
 
+Note the direction: this is measured **after** publishing, not predicted before it.
+`PRODUCT.md` — Inspyr eliminates what will not work; it does not forecast what will.
+
 ## Core loop
 **Watch → Decide → Create → Publish → Measure → Learn → Repeat**
 
@@ -30,15 +33,23 @@ Long-term category:
 Today: **What should we say next?**
 Eventually: **What should this company do next to grow?**
 
+## Who it is for
+
+**A creator who teaches something, roughly 500 to 50,000 followers**, on the platforms they
+choose. See `PRODUCT.md` for the full reasoning and for who was ruled out — briefly: big
+creators need a service organisation, and B2B/LinkedIn marketers cannot be served because no
+API exposes personal LinkedIn analytics to anyone.
+
+Brands later, on the same engine with a different objective.
+
 ## What "your work" means
 
-Deliberately broad. Not every user is building software.
+Deliberately broad. Not every creator is building software.
 
 | User | Their work is |
 |---|---|
-| technical founder | commits, releases, changelog, architecture decisions |
 | creator / educator | videos published, scripts, research read, questions from the audience |
-| one-person marketing team | launches, customer calls, competitor moves, docs |
+| technical founder | commits, releases, changelog, architecture decisions |
 | researcher / analyst | papers read, notes, threads followed |
 
 Inspyr ingests notes, documents, transcripts, voice notes, saved links, RSS and published content — not just repos. **"Watches what you build" is wrong copy: it excludes most creators.** The correct promise is that Inspyr watches whatever stream of work and interest you point it at.

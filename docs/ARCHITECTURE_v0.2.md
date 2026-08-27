@@ -278,6 +278,21 @@ Every tool call is persisted to `agent_steps`. That trace is simultaneously the 
 
 # 5. Layer 3 — Growth Simulator / Counterfactual Engine
 
+> **AMENDED — see `PRODUCT.md`, "Filter, don't forecast."**
+>
+> This section as originally written has the simulator predicting expected reward, i.e. which
+> action will do *best*. Salganik and Watts's music-lab experiments say that is not reliably
+> possible: once quality clears a threshold, success is driven by social influence and path
+> dependence. Experts filter out failures reliably; nobody picks winners reliably.
+>
+> So the simulator predicts the **floor, not the ceiling**. *"This will fail because it is 639
+> replies deep"* is defensible. *"This will get 1.6× saves"* is not.
+>
+> Everything below stands — the ActionSpec unit, the evidence tiers, the degradation rules,
+> the explore/exploit budget, the calibration loop. Only the claim changes. In practice that
+> means the high-confidence output is **elimination**, and ranking among survivors stays
+> deliberately low-confidence, which is what the degradation rules in §5.5 already enforce.
+
 ## 5.1 What it actually is
 
 At V0 this is a **contextual bandit over ActionSpecs**, not a simulation of people. Naming it accurately matters: it gives you Thompson sampling / UCB off the shelf instead of hand-rolled scoring, and it forces explicit explore/exploit budgeting.

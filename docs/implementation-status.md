@@ -11,6 +11,8 @@ Last updated: 2026-08-23.
 Required by `BUILD_SPEC_v0.1.md` §28.2. This file states what is actually true, including
 what does not work.
 
+**Product decisions live in `PRODUCT.md`.** This file is only about what exists in the code.
+
 ---
 
 ## Acceptance — BUILD_SPEC_v0.1 §29
