@@ -36,9 +36,10 @@ Eventually: **What should this company do next to grow?**
 ## Who it is for
 
 **A creator who teaches something, roughly 500 to 50,000 followers**, on the platforms they
-choose. See `PRODUCT.md` for the full reasoning and for who was ruled out — briefly: big
-creators need a service organisation, and B2B/LinkedIn marketers cannot be served because no
-API exposes personal LinkedIn analytics to anyone.
+choose. See `PRODUCT.md` for the full reasoning and for who was deferred. Big creators need a service
+organisation. LinkedIn-first users are deferred on access, not capability — LinkedIn does
+expose personal post analytics, including per-post follower attribution, but it requires
+Community Management API approval.
 
 Brands later, on the same engine with a different objective.
 

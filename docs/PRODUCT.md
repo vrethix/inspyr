@@ -41,11 +41,38 @@ the reward weights already model that.
 
 **Ruled out and why:**
 
+
 | Audience | Verdict |
 |---|---|
 | Big creators (10M+) | That's Grocalo. Needs a service org, relationships, team. |
-| B2B / LinkedIn marketers | **No API exposes personal LinkedIn analytics, to anyone.** Inspyr would be blind. |
+| B2B / LinkedIn marketers | Deferred, not ruled out — see the correction below. |
 | Founders at 0 followers | Real problem, but usually blocked on having something worth following — which software cannot fix. |
+
+### Correction: LinkedIn personal analytics do exist
+
+An earlier version of this document said *"no API exposes personal LinkedIn analytics, to
+anyone."* **That was wrong**, and it was used to rule out an audience.
+
+LinkedIn's `memberCreatorPostAnalytics` endpoint returns analytics for the authenticated
+member's own posts. Permission: `r_member_postAnalytics`. From version 2026-04 the metrics are:
+
+```
+IMPRESSION · MEMBERS_REACHED · RESHARE · REACTION · COMMENT
+POST_SAVE · POST_SEND · LINK_CLICKS · PREMIUM_CTA_CLICKS
+FOLLOWER_GAINED_FROM_CONTENT      ← per-post follower attribution
+PROFILE_VIEW_FROM_CONTENT
+```
+
+`FOLLOWER_GAINED_FROM_CONTENT` is the metric this document elsewhere claims no platform
+provides. LinkedIn provides it, per post. That is better attribution than Zernio returns for
+any other platform.
+
+**The real barrier is access, not existence:** it requires Community Management API approval,
+which needs app review and a registered legal organisation. So LinkedIn stays in the
+architecture, the application goes in early, and Zernio or manual import covers the gap while
+approval is pending.
+
+*Source: [Member Post Statistics](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/members/post-statistics?view=li-lms-2026-08)*
 
 ---
 
@@ -60,6 +87,30 @@ $1M a month. Not a unicorn.
 | $149 | 6,700 |
 
 12,000 is reachable by one person. 34,000 is not.
+
+
+---
+
+## Pricing
+
+Sell **what Inspyr does**, not how many accounts you connect. Zernio is ~$6 per connected
+account, so "all platforms" on a $99 plan can be $48 of cost before a single token of
+inference, and that is not a business.
+
+| Plan | Accounts | What it is |
+|---|---|---|
+| **$20** | 1 | Publish and schedule. The Buffer-alternative door. |
+| **$49** | 3 | Adds the stage engine, drafts per channel, learning. |
+| **$99 Operator** | 3 included, +$10 each | Daily briefing, opportunity scan, engagement queue, exception handling. Proactive, not just more connections. |
+
+The $99 upgrade is **daily operation**, not seat count. That is also what keeps gross margin
+intact: extra accounts are priced at roughly twice their cost rather than bundled.
+
+*(An earlier draft proposed "$99 = all platforms." Wrong — it inverted the cost structure.)*
+
+**Autonomy is the long-term axis.** `channel_policies.autonomy_json` already models
+`suggest → approve → auto`. Auto is a later tier, gated on calibration, because both this
+document and the engineering spec reject autonomous publishing in the first release.
 
 ---
 
